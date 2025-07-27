@@ -1,0 +1,23 @@
+{
+    "version": 1,
+    "name": "portfolio-tracker-backend",
+    "builds": [
+      {
+        "src": "backend/server.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "backend/server.js"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "backend/server.js"
+      }
+    ],
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
