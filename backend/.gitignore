@@ -1,0 +1,29 @@
+# Environment variables
+.env
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Optional npm cache directory
+.npm
+
+# Production builds
+dist/
+build/
+
+# Database
+*.db
+*.sqlite
+
+# IDE files
+.vscode/
+.idea/
