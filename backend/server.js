@@ -21,19 +21,20 @@ const pool = new Pool({
 });
 
 // Plaid setup
+// Update Plaid setup to use VERCEL_ENV
 const configuration = new Configuration({
-  basePath: process.env.NODE_ENV === 'production' 
-    ? PlaidEnvironments.production 
-    : PlaidEnvironments.sandbox,
-  baseOptions: {
-    headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.NODE_ENV === 'production' 
-        ? process.env.PLAID_SECRET_PRODUCTION 
-        : process.env.PLAID_SECRET_SANDBOX,
+    basePath: (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production')
+      ? PlaidEnvironments.production 
+      : PlaidEnvironments.sandbox,
+    baseOptions: {
+      headers: {
+        'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
+        'PLAID-SECRET': (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production')
+          ? process.env.PLAID_SECRET_PRODUCTION 
+          : process.env.PLAID_SECRET_SANDBOX,
+      },
     },
-  },
-});
+  });
 
 const plaidClient = new PlaidApi(configuration);
 
@@ -539,15 +540,17 @@ app.post('/api/verify-invitation', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Replace this function in your server.js
 app.get('/api/health', (req, res) => {
-    res.json({
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-      VERCEL_ENV: process.env.VERCEL_ENV, // Vercel's internal env
-      all_env: Object.keys(process.env).filter(key => 
-        key.includes('NODE') || key.includes('VERCEL') || key.includes('DATABASE')
-      )
+    // Use VERCEL_ENV instead of NODE_ENV for environment detection
+    const environment = process.env.VERCEL_ENV || process.env.NODE_ENV || 'development';
+    
+    res.status(200).json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      environment: environment,
+      vercel_env: process.env.VERCEL_ENV,
+      node_env: process.env.NODE_ENV
     });
   });
 
