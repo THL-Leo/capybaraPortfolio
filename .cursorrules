@@ -1,0 +1,173 @@
+# Portfolio Tracker - Cursor AI Development Rules
+
+## Project Overview
+This is a personal portfolio tracker for 2 users (invitation-only) that connects to Charles Schwab and Fidelity accounts via Plaid API. The backend is complete and deployed; focus on building the frontend.
+
+## Core Principle: MINIMAL CHANGES ONLY
+- Make the smallest possible changes to achieve the requested feature
+- Don't refactor existing working code unless explicitly asked
+- Build incrementally - one component at a time
+- Reuse existing patterns and structures
+- Don't over-engineer solutions
+
+## Tech Stack (DO NOT CHANGE)
+- **Frontend**: React + Chakra UI
+- **Backend**: Node.js + Express (COMPLETE - deployed on Vercel)
+- **Database**: Neon PostgreSQL (COMPLETE - invitation codes stored in DB)
+- **Auth**: JWT with invitation-only registration (COMPLETE)
+- **Financial API**: Plaid (COMPLETE - production approved)
+- **Deployment**: Vercel (COMPLETE)
+
+## Current Project Status
+✅ **COMPLETE (Don't modify):**
+- Backend API with all endpoints
+- Database schema and invitation code system
+- Plaid integration (Balance, Transactions, Liabilities)
+- JWT authentication
+- Vercel deployment with environment variables
+
+⏳ **PENDING:**
+- Plaid INVESTMENTS product approval (placeholder endpoint exists)
+
+🔄 **NEEDS BUILDING:**
+- React frontend with Chakra UI
+- User authentication pages (login/register)
+- Dashboard for portfolio viewing
+- Plaid Link integration component
+
+## Backend API Endpoints (COMPLETE - Reference Only)
+```
+POST /api/register - Registration with invitation code
+POST /api/login - User login
+POST /api/create_link_token - Plaid Link token
+POST /api/exchange_public_token - Save Plaid connection
+GET /api/accounts - Get connected accounts
+GET /api/transactions - Get transaction history
+GET /api/liabilities - Get credit cards/loans
+POST /api/refresh_transactions - Refresh Plaid data
+GET /api/investments - Placeholder (pending Plaid approval)
+GET /api/health - Health check
+GET /api/admin/invitations - Admin endpoint
+POST /api/verify-invitation - Verify invitation code
+```
+
+## Development Environment
+- **API Base URL**: Use environment variable for API calls
+- **Development**: Preview environment on Vercel
+- **Database**: Neon development branch
+- **Plaid**: Sandbox mode for testing
+
+## Frontend Development Guidelines
+
+### File Structure
+```
+frontend/
+├── src/
+│   ├── components/          # Reusable components
+│   ├── pages/              # Route components
+│   ├── hooks/              # Custom hooks
+│   ├── utils/              # Utility functions
+│   ├── context/            # React context
+│   └── App.js              # Main app
+```
+
+### Required Components to Build
+1. **AuthContext** - JWT token management
+2. **LoginPage** - Simple login form
+3. **RegisterPage** - Registration with invitation code
+4. **Dashboard** - Main portfolio overview
+5. **PlaidLink** - Account connection component
+6. **AccountList** - Display connected accounts
+7. **TransactionList** - Display transactions
+
+### Chakra UI Guidelines
+- Use Chakra UI components exclusively - no custom CSS
+- Stick to default Chakra theme colors and spacing
+- Use simple layouts: Box, VStack, HStack, SimpleGrid
+- Keep forms simple: FormControl, Input, Button
+- Use Chakra's built-in responsive props
+
+### API Integration
+- Use fetch() or axios for API calls
+- Store JWT token in localStorage or context
+- Handle loading states with Chakra Spinner
+- Display errors with Chakra Alert
+- Use React hooks (useState, useEffect) for state management
+
+### Authentication Flow
+1. Check for existing JWT token on app load
+2. Redirect to login if no token
+3. Registration requires valid invitation code
+4. Store user data in React context
+5. Logout clears token and redirects to login
+
+### Plaid Integration
+- Use Plaid Link React component
+- Initialize with link_token from backend
+- Handle success by calling exchange_public_token
+- Display connected accounts after successful linking
+- Show loading states during account connection
+
+## Code Style Rules
+- Use functional components with hooks
+- Keep components small and focused
+- Use descriptive variable names
+- Add minimal comments only when necessary
+- Handle errors gracefully with user-friendly messages
+- Use Chakra UI responsive design patterns
+
+## Security Considerations
+- Never store sensitive data in localStorage except JWT
+- Validate all user inputs
+- Handle API errors gracefully
+- Don't expose API secrets in frontend code
+- Use environment variables for API endpoints
+
+## When Building New Features
+1. **Start minimal** - basic functionality first
+2. **Test incrementally** - one component at a time
+3. **Use existing patterns** - follow established code structure
+4. **Don't break existing** - backend API is complete and working
+5. **Build on top** - don't modify backend unless critical bug
+
+## Common Tasks & Approaches
+
+### Adding New Page
+- Create single component file
+- Use Chakra UI layout components
+- Add to React Router
+- Keep it simple - one purpose per page
+
+### API Integration
+- Create custom hook for API calls
+- Handle loading/error states
+- Use consistent error messaging
+- Don't modify backend endpoints
+
+### Form Handling
+- Use Chakra UI form components
+- Basic validation only
+- Submit to existing backend endpoints
+- Handle response states clearly
+
+## What NOT to Do
+- Don't modify backend code unless explicitly requested
+- Don't change database schema
+- Don't alter Plaid integration
+- Don't overcomplicate simple features
+- Don't add unnecessary dependencies
+- Don't refactor working backend code
+- Don't change authentication system
+- Don't modify environment variables or deployment
+
+## Current Priority Order
+1. Basic React app setup with Chakra UI
+2. Authentication pages (login/register)
+3. JWT token management
+4. Basic dashboard layout
+5. Plaid Link integration
+6. Account listing
+7. Transaction display
+8. Polish and responsive design
+
+Remember: The backend is production-ready. Focus on building a clean, simple frontend that connects to the existing APIs.

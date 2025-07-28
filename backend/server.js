@@ -8,33 +8,43 @@ const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 
 const app = express();
 
-// Middleware - CORS configuration
+// Middleware - Environment-based CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://capybara-portfolio-git-dev-thlleos-projects.vercel.app'
-    ];
+    // Define allowed origins based on environment
+    const isDevelopment = process.env.VERCEL_ENV !== 'production' && process.env.NODE_ENV !== 'production';
     
-    // In development, allow any localhost origin
-    if (process.env.NODE_ENV !== 'production' && origin.includes('localhost')) {
-      return callback(null, true);
+    let allowedOrigins = [];
+    
+    if (isDevelopment) {
+      // Development: Allow localhost for testing
+      allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001'
+      ];
+    } else {
+      // Production: Only allow your actual frontend domain
+      allowedOrigins = [
+        'https://your-frontend-domain.vercel.app',
+        'https://capybara-portfolio-git-dev-thlleos-projects.vercel.app' // Remove this when you have a separate frontend domain
+      ];
     }
+    
+    console.log(`CORS check - Environment: ${isDevelopment ? 'development' : 'production'}, Origin: ${origin}, Allowed: ${allowedOrigins.includes(origin)}`);
     
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    return callback(new Error('Not allowed by CORS'));
+    return callback(new Error(`CORS: Origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
