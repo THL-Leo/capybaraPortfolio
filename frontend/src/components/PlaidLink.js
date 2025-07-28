@@ -67,13 +67,13 @@ const PlaidLink = ({ onSuccess }) => {
     }
   };
 
-  const config = {
+  const plaidConfig = {
     token: linkToken,
     onSuccess: onPlaidSuccess,
     onExit: onPlaidExit,
   };
 
-  const { open, ready } = usePlaidLink(config);
+  const { open, ready } = usePlaidLink(plaidConfig);
 
   return (
     <Button

@@ -298,22 +298,39 @@ app.post('/api/login', async (req, res) => {
 // Plaid Routes
 app.post('/api/create_link_token', authenticateToken, async (req, res) => {
   try {
+    console.log('Creating link token for user:', req.user.userId);
+    console.log('Environment check:', {
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      NODE_ENV: process.env.NODE_ENV,
+      PLAID_CLIENT_ID: process.env.PLAID_CLIENT_ID ? 'SET' : 'MISSING',
+      PLAID_SECRET_SANDBOX: process.env.PLAID_SECRET_SANDBOX ? 'SET' : 'MISSING'
+    });
+    
     const request = {
       user: {
         client_user_id: req.user.userId.toString()
       },
       client_name: "Portfolio Tracker",
       products: ['transactions', 'liabilities'],
-      optional_products: ['assets'],
       country_codes: ['US'],
       language: 'en',
     };
     
+    console.log('Plaid request:', request);
     const response = await plaidClient.linkTokenCreate(request);
+    console.log('Plaid response received');
     res.json({ link_token: response.data.link_token });
   } catch (error) {
-    console.error('Link token error:', error);
-    res.status(500).json({ error: 'Failed to create link token' });
+    console.error('Link token error details:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Failed to create link token',
+      details: error.message 
+    });
   }
 });
 
