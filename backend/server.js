@@ -25,13 +25,13 @@ const corsOptions = {
         'http://localhost:3000',
         'http://localhost:3001'
       ];
-    } else {
-      // Production: Only allow your actual frontend domain
-      allowedOrigins = [
-        'https://your-frontend-domain.vercel.app',
-        'https://capybara-portfolio-git-dev-thlleos-projects.vercel.app' // Remove this when you have a separate frontend domain
-      ];
-    }
+         } else {
+       // Production: Only allow your actual frontend domain
+       allowedOrigins = [
+         'https://your-frontend-domain.vercel.app', // Your future frontend domain
+         'https://capybara-portfolio-backend-git-dev-thlleos-projects.vercel.app' // Current backend URL (temporary)
+       ];
+     }
     
     console.log(`CORS check - Environment: ${isDevelopment ? 'development' : 'production'}, Origin: ${origin}, Allowed: ${allowedOrigins.includes(origin)}`);
     
