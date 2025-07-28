@@ -137,6 +137,11 @@ createTables();
 
 // Database-based invitation validation middleware
 const validateInvitation = async (req, res, next) => {
+  // Skip validation for OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   try {
     const { invitationCode } = req.body;
     
