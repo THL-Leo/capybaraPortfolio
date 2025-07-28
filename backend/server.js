@@ -1,4 +1,4 @@
-// backend/server.js - Modified for Vercel deployment
+// backend/server.js - Complete server with database invitation codes
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -20,7 +20,7 @@ const pool = new Pool({
   }
 });
 
-// Plaid setup (unchanged)
+// Plaid setup
 const configuration = new Configuration({
   basePath: process.env.NODE_ENV === 'production' 
     ? PlaidEnvironments.production 
@@ -37,13 +37,7 @@ const configuration = new Configuration({
 
 const plaidClient = new PlaidApi(configuration);
 
-// Invitation codes
-const VALID_INVITATIONS = {
-  'PORTFOLIO_ALPHA': { email: 'user1@example.com', used: false },
-  'PORTFOLIO_BETA': { email: 'user2@example.com', used: false }
-};
-
-// Initialize database tables
+// Initialize database tables (updated for invitation codes)
 const createTables = async () => {
   try {
     await pool.query(`
@@ -52,6 +46,17 @@ const createTables = async () => {
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS invitation_codes (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        used_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        used_at TIMESTAMP,
+        expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 days')
       );
       
       CREATE TABLE IF NOT EXISTS plaid_items (
@@ -91,16 +96,43 @@ const createTables = async () => {
 // Initialize tables on startup
 createTables();
 
-// Middleware
+// Database-based invitation validation middleware
 const validateInvitation = async (req, res, next) => {
-  const { invitationCode } = req.body;
-  
-  if (!VALID_INVITATIONS[invitationCode] || VALID_INVITATIONS[invitationCode].used) {
-    return res.status(400).json({ error: 'Invalid or expired invitation code' });
+  try {
+    const { invitationCode } = req.body;
+    
+    if (!invitationCode) {
+      return res.status(400).json({ error: 'Invitation code required' });
+    }
+    
+    // Check invitation code in database
+    const result = await pool.query(
+      'SELECT * FROM invitation_codes WHERE code = $1',
+      [invitationCode]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid invitation code' });
+    }
+    
+    const invitation = result.rows[0];
+    
+    // Check if already used
+    if (invitation.used) {
+      return res.status(400).json({ error: 'Invitation code already used' });
+    }
+    
+    // Check if expired
+    if (invitation.expires_at && new Date() > new Date(invitation.expires_at)) {
+      return res.status(400).json({ error: 'Invitation code has expired' });
+    }
+    
+    req.invitation = invitation;
+    next();
+  } catch (error) {
+    console.error('Invitation validation error:', error);
+    res.status(500).json({ error: 'Failed to validate invitation' });
   }
-  
-  req.invitation = VALID_INVITATIONS[invitationCode];
-  next();
 };
 
 const authenticateToken = (req, res, next) => {
@@ -120,11 +152,12 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Auth Routes
+// Registration (using database invitation codes)
 app.post('/api/register', validateInvitation, async (req, res) => {
   try {
     const { email, password, invitationCode } = req.body;
     
+    // Verify email matches invitation
     if (email !== req.invitation.email) {
       return res.status(400).json({ error: 'Email does not match invitation' });
     }
@@ -132,28 +165,54 @@ app.post('/api/register', validateInvitation, async (req, res) => {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
-    const result = await pool.query(
-      'INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, NOW()) RETURNING id, email',
-      [email, hashedPassword]
-    );
+    // Start transaction
+    const client = await pool.connect();
     
-    VALID_INVITATIONS[invitationCode].used = true;
-    
-    const token = jwt.sign(
-      { userId: result.rows[0].id, email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.status(201).json({
-      message: 'Registration successful',
-      token,
-      user: { id: result.rows[0].id, email }
-    });
+    try {
+      await client.query('BEGIN');
+      
+      // Create user
+      const userResult = await client.query(
+        'INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, NOW()) RETURNING id, email',
+        [email, hashedPassword]
+      );
+      
+      const userId = userResult.rows[0].id;
+      
+      // Mark invitation as used
+      await client.query(
+        'UPDATE invitation_codes SET used = TRUE, used_by = $1, used_at = NOW() WHERE id = $2',
+        [userId, req.invitation.id]
+      );
+      
+      await client.query('COMMIT');
+      
+      const token = jwt.sign(
+        { userId: userId, email },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      
+      res.status(201).json({
+        message: 'Registration successful',
+        token,
+        user: { id: userId, email }
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
     
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'Email already registered' });
+    } else {
+      res.status(500).json({ error: 'Registration failed' });
+    }
   }
 });
 
@@ -350,14 +409,147 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
-  });
+// Admin endpoint to check invitation codes
+app.get('/api/admin/invitations', async (req, res) => {
+  try {
+    // Basic security
+    const adminPassword = req.query.admin_key;
+    if (adminPassword !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const result = await pool.query(`
+      SELECT 
+        id,
+        code,
+        email,
+        used,
+        used_by,
+        created_at,
+        used_at,
+        expires_at,
+        CASE 
+          WHEN expires_at < NOW() THEN true 
+          ELSE false 
+        END as expired
+      FROM invitation_codes 
+      ORDER BY created_at DESC
+    `);
+    
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE used = true) as used_count,
+        COUNT(*) FILTER (WHERE used = false AND (expires_at IS NULL OR expires_at > NOW())) as available,
+        COUNT(*) FILTER (WHERE expires_at < NOW()) as expired
+      FROM invitation_codes
+    `);
+    
+    res.json({
+      invitations: result.rows,
+      stats: stats.rows[0]
+    });
+  } catch (error) {
+    console.error('Admin invitations error:', error);
+    res.status(500).json({ error: 'Failed to fetch invitations' });
+  }
 });
+
+// Admin endpoint to create new invitation codes
+app.post('/api/admin/invitations', async (req, res) => {
+  try {
+    const adminPassword = req.headers['x-admin-key'];
+    if (adminPassword !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const { code, email, expiresInDays = 30 } = req.body;
+    
+    if (!code || !email) {
+      return res.status(400).json({ error: 'Code and email are required' });
+    }
+    
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+    
+    const result = await pool.query(
+      'INSERT INTO invitation_codes (code, email, expires_at) VALUES ($1, $2, $3) RETURNING *',
+      [code, email, expiresAt]
+    );
+    
+    res.status(201).json({
+      message: 'Invitation code created',
+      invitation: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Create invitation error:', error);
+    if (error.code === '23505') {
+      res.status(400).json({ error: 'Invitation code already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to create invitation' });
+    }
+  }
+});
+
+// Endpoint to verify if an invitation code is valid (public)
+app.post('/api/verify-invitation', async (req, res) => {
+  try {
+    const { invitationCode } = req.body;
+    
+    if (!invitationCode) {
+      return res.status(400).json({ error: 'Invitation code required' });
+    }
+    
+    const result = await pool.query(
+      'SELECT * FROM invitation_codes WHERE code = $1',
+      [invitationCode]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        valid: false, 
+        error: 'Invalid invitation code' 
+      });
+    }
+    
+    const invitation = result.rows[0];
+    
+    if (invitation.used) {
+      return res.status(409).json({ 
+        valid: false, 
+        error: 'Invitation code already used' 
+      });
+    }
+    
+    if (invitation.expires_at && new Date() > new Date(invitation.expires_at)) {
+      return res.status(410).json({ 
+        valid: false, 
+        error: 'Invitation code has expired' 
+      });
+    }
+    
+    res.json({
+      valid: true,
+      message: 'Invitation code is valid',
+      emailDomain: invitation.email.split('@')[1]
+    });
+  } catch (error) {
+    console.error('Verify invitation error:', error);
+    res.status(500).json({ error: 'Failed to verify invitation' });
+  }
+});
+
+// Health check endpoint
+app.get('/api/debug-env', (req, res) => {
+    res.json({
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      VERCEL_ENV: process.env.VERCEL_ENV, // Vercel's internal env
+      all_env: Object.keys(process.env).filter(key => 
+        key.includes('NODE') || key.includes('VERCEL') || key.includes('DATABASE')
+      )
+    });
+  });
 
 // For Vercel, we need to export the app as a serverless function
 const PORT = process.env.PORT || 3001;
