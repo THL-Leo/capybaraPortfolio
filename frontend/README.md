@@ -39,10 +39,21 @@ npm install
 cp .env.example .env
 ```
 
-3. Update `.env` with your API URL:
+3. Configure environment variables:
+   - Open `.env` file
+   - Set `REACT_APP_API_URL` to your backend URL
+   - **Never commit `.env` to version control**
+
+### Environment Configuration
+
+For local development:
+```bash
+echo "REACT_APP_API_URL=https://capybara-portfolio-backend-git-dev-thlleos-projects.vercel.app" > .env
 ```
-REACT_APP_API_URL=https://capybara-portfolio-git-dev-thlleos-projects.vercel.app
-```
+
+For production deployment:
+- Set environment variables in your hosting platform (Vercel, Netlify, etc.)
+- Never hardcode URLs in source code
 
 ### Development
 

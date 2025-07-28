@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { Button, useToast } from '@chakra-ui/react';
 import axios from 'axios';
+import { config } from '../config/environment';
 
 const PlaidLink = ({ onSuccess }) => {
   const [linkToken, setLinkToken] = useState('');
@@ -14,7 +15,7 @@ const PlaidLink = ({ onSuccess }) => {
 
   const createLinkToken = async () => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/create_link_token`);
+      const response = await axios.post(`${config.apiUrl}/api/create_link_token`);
       setLinkToken(response.data.link_token);
     } catch (error) {
       console.error('Link token creation failed:', error);
@@ -31,7 +32,7 @@ const PlaidLink = ({ onSuccess }) => {
   const onPlaidSuccess = async (public_token, metadata) => {
     setLoading(true);
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/exchange_public_token`, {
+      await axios.post(`${config.apiUrl}/api/exchange_public_token`, {
         public_token
       });
       

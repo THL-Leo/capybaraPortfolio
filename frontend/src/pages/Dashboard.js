@@ -18,6 +18,7 @@ import PortfolioChart from '../components/PortfolioChart';
 import StockHistoryChart from '../components/StockHistoryChart';
 import PlaidLink from '../components/PlaidLink';
 import axios from 'axios';
+import { config } from '../config/environment';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -37,14 +38,14 @@ const Dashboard = () => {
 
     try {
       // Fetch accounts
-      const accountsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/accounts`);
+      const accountsResponse = await axios.get(`${config.apiUrl}/api/accounts`);
       setAccounts(accountsResponse.data);
       
       if (accountsResponse.data.length > 0) {
         setConnectedAccounts(true);
         
         // Fetch transactions if we have accounts
-        const transactionsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/transactions`, {
+        const transactionsResponse = await axios.get(`${config.apiUrl}/api/transactions`, {
           params: {
             startDate: '2024-01-01',
             endDate: new Date().toISOString().split('T')[0]
@@ -68,7 +69,7 @@ const Dashboard = () => {
   const refreshData = async () => {
     setLoading(true);
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/refresh_transactions`);
+      await axios.post(`${config.apiUrl}/api/refresh_transactions`);
       // Wait a moment then fetch fresh data
       setTimeout(() => {
         fetchData();
