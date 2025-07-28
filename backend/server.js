@@ -540,7 +540,7 @@ app.post('/api/verify-invitation', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/debug-env', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.json({
       NODE_ENV: process.env.NODE_ENV,
       DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
