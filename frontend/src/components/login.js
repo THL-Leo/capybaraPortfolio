@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const Login = ({ onSwitchToRegister }) => {
+const Login = () => {
+  const navigate = useNavigate();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
@@ -28,6 +30,7 @@ const Login = ({ onSwitchToRegister }) => {
     try {
       const response = await fetch('/login', {
         method: 'POST',
+        credentials: 'include', // Include cookies
         headers: {
           'Content-Type': 'application/json',
         },
@@ -41,8 +44,10 @@ const Login = ({ onSwitchToRegister }) => {
 
       if (response.ok) {
         console.log('Login successful:', data);
-        // Use auth context to login
-        login(data.user, data.access_token);
+        // Use auth context to login (no token needed, stored in httpOnly cookie)
+        login(data.user);
+        // Redirect to home page after successful login
+        navigate('/', { replace: true });
       } else {
         setError(data.error || 'Login failed');
       }
@@ -127,13 +132,9 @@ const Login = ({ onSwitchToRegister }) => {
                 {/* Register section */}
                 <div className="text-center">
                   <p>Not a member? 
-                    <button 
-                      type="button" 
-                      className="btn btn-link p-0 ms-1"
-                      onClick={onSwitchToRegister}
-                    >
+                    <Link to="/register" className="text-decoration-none ms-1">
                       Register
-                    </button>
+                    </Link>
                   </p>
                 </div>
               </form>

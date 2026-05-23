@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 
-const Register = ({ onSwitchToLogin }) => {
+const Register = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -42,6 +44,7 @@ const Register = ({ onSwitchToLogin }) => {
     try {
       const response = await fetch('/register', {
         method: 'POST',
+        credentials: 'include', // Include cookies
         headers: {
           'Content-Type': 'application/json',
         },
@@ -55,7 +58,7 @@ const Register = ({ onSwitchToLogin }) => {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Registration successful! You can now log in.');
+        setSuccess('Registration successful! Redirecting to login...');
         console.log('Registration successful:', data);
         // Clear form
         setFormData({
@@ -64,6 +67,10 @@ const Register = ({ onSwitchToLogin }) => {
           confirmPassword: '',
           inviteCode: ''
         });
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
       } else {
         setError(data.error || 'Registration failed');
       }
@@ -163,13 +170,9 @@ const Register = ({ onSwitchToLogin }) => {
                 {/* Login link */}
                 <div className="text-center">
                   <p>Already have an account? 
-                    <button 
-                      type="button" 
-                      className="btn btn-link p-0 ms-1"
-                      onClick={onSwitchToLogin}
-                    >
+                    <Link to="/login" className="text-decoration-none ms-1">
                       Sign in
-                    </button>
+                    </Link>
                   </p>
                 </div>
               </form>
