@@ -30,7 +30,7 @@ function AppContent() {
           path="/accounts"
           element={
             <ProtectedRoute>
-              <Accounts csrfToken={csrfToken} />
+              <Accounts csrfToken={csrfToken} user={user} onLogout={logout} />
             </ProtectedRoute>
           }
         />
@@ -39,7 +39,7 @@ function AppContent() {
           path="/upload"
           element={
             <ProtectedRoute>
-              <Upload user={user} csrfToken={csrfToken} />
+              <Upload user={user} csrfToken={csrfToken} onLogout={logout} />
             </ProtectedRoute>
           }
         />

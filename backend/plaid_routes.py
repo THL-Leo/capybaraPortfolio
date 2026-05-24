@@ -10,9 +10,14 @@ from plaid_client import create_link_token, exchange_public_token
 from plaid_sync import sync_all_items_for_user, sync_item_for_user
 from portfolio import (
     compute_net_worth_from_plaid,
+    compute_spending_summary,
+    get_card_transactions,
+    get_credit_accounts,
+    get_net_worth_snapshots,
     get_plaid_accounts,
     get_plaid_holdings,
     get_plaid_items,
+    record_net_worth_snapshot,
     user_has_plaid_items,
 )
 
@@ -109,6 +114,11 @@ def plaid_item_delete(item_id):
         (user_id, item_id, user_id),
     )
     cursor.execute(
+        'DELETE FROM plaid_card_transactions WHERE user_id = ? AND account_id IN ('
+        'SELECT account_id FROM plaid_accounts WHERE item_id = ? AND user_id = ?)',
+        (user_id, item_id, user_id),
+    )
+    cursor.execute(
         'DELETE FROM plaid_accounts WHERE user_id = ? AND item_id = ?',
         (user_id, item_id),
     )
@@ -130,10 +140,15 @@ def plaid_item_delete(item_id):
 @jwt_required()
 def accounts():
     user_id = int(get_jwt_identity())
+    db = get_db()
+    card_transactions = get_card_transactions(db, user_id)
     return jsonify({
-        'items': get_plaid_items(get_db(), user_id),
-        'accounts': get_plaid_accounts(get_db(), user_id),
-        'holdings': get_plaid_holdings(get_db(), user_id),
+        'items': get_plaid_items(db, user_id),
+        'accounts': get_plaid_accounts(db, user_id),
+        'holdings': get_plaid_holdings(db, user_id),
+        'credit_cards': get_credit_accounts(db, user_id),
+        'card_transactions': card_transactions,
+        'spending_summary': compute_spending_summary(db, user_id),
     }), 200
 
 
@@ -152,3 +167,32 @@ def net_worth():
         }), 200
     data = compute_net_worth_from_plaid(db, user_id)
     return jsonify(data), 200
+
+
+@plaid_bp.route('/net-worth-over-time', methods=['GET'])
+@jwt_required()
+def net_worth_over_time():
+    user_id = int(get_jwt_identity())
+    db = get_db()
+    if not user_has_plaid_items(db, user_id):
+        return jsonify({
+            'source': 'none',
+            'message': 'Connect an institution via Plaid to see net worth history',
+            'snapshots': [],
+        }), 200
+    try:
+        snapshots = get_net_worth_snapshots(db, user_id)
+        if not snapshots:
+            record_net_worth_snapshot(db, user_id)
+            snapshots = get_net_worth_snapshots(db, user_id)
+    except Exception as e:
+        return jsonify({
+            'source': 'plaid',
+            'snapshots': [],
+            'message': f'Unable to load history: {e}',
+        }), 200
+    return jsonify({
+        'source': 'plaid',
+        'snapshots': snapshots,
+        'message': 'Net worth history loaded' if snapshots else 'History builds after each sync',
+    }), 200

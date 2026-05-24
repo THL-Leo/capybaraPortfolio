@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import DashboardNav from './DashboardNav';
 
-const Upload = ({ user, csrfToken }) => {
+const Upload = ({ user, csrfToken, onLogout }) => {
   const [selectedBrokerage, setSelectedBrokerage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
-  const location = useLocation();
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -74,61 +73,16 @@ const Upload = ({ user, csrfToken }) => {
 
   return (
     <div>
-      {/* Full-width navbar */}
-      <nav className="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-        <div className="container-fluid">
-          <img src="/capyb.png" alt="Capybara Portfolio" className="navbar-brand" style={{height: '50px', width: 'auto'}} />
-          <button 
-            className="navbar-toggler" 
-            type="button" 
-            data-bs-toggle="collapse" 
-            data-bs-target="#navbarSupportedContent" 
-            aria-controls="navbarSupportedContent" 
-            aria-expanded="false" 
-            aria-label="Toggle navigation"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              <li className="nav-item">
-                <Link 
-                  className={`nav-link ${location.pathname === '/' ? 'active' : ''}`} 
-                  to="/"
-                >
-                  Dashboard
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/accounts">Accounts</Link>
-              </li>
-              <li className="nav-item">
-                <Link
-                  className={`nav-link ${location.pathname === '/upload' ? 'active' : ''}`}
-                  to="/upload"
-                >
-                  CSV fallback
-                </Link>
-              </li>
-            </ul>
-            <div className="d-flex align-items-center">
-              <span className="navbar-text me-3">
-                Welcome, {user?.username || 'User'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <DashboardNav username={user?.username} onLogout={onLogout} />
 
-      {/* Main content container */}
-      <div className="container mt-4">
+      <div className="dashboard-page">
         <div className="row justify-content-center">
           <div className="col-md-8">
-            <div className="card">
-              <div className="card-header">
-                <h4 className="mb-0">Upload Transaction CSV</h4>
+            <div className="capy-card">
+              <div className="capy-card-header">
+                <h5 className="mb-0">Upload Transaction CSV</h5>
               </div>
-              <div className="card-body">
+              <div className="capy-card-body">
                 <div className="mb-3">
                   <label htmlFor="brokerage-select" className="form-label">
                     Select Brokerage
@@ -206,11 +160,11 @@ const Upload = ({ user, csrfToken }) => {
             </div>
 
             {/* Instructions */}
-            <div className="card mt-4">
-              <div className="card-header">
+            <div className="capy-card mt-4">
+              <div className="capy-card-header">
                 <h5 className="mb-0">Upload Instructions</h5>
               </div>
-              <div className="card-body">
+              <div className="capy-card-body">
                 <ol>
                   <li>Select Charles Schwab from the dropdown above</li>
                   <li>Choose the CSV file you exported from Schwab</li>

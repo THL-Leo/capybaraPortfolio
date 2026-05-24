@@ -1,11 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import HomeChart from './homeChart';
+import DashboardNav from './DashboardNav';
+import StatCard from './StatCard';
 
-const Home = ({ user: userProp, csrfToken, onLogout }) => {
+const CHART_HEIGHT = 320;
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+const formatMoney = (n) =>
+  `$${Number(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const Home = ({ csrfToken, onLogout }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [message, setMessage] = useState('');
-  const [stats, setStats] = useState({});
   const [error, setError] = useState('');
   const [chartWidth, setChartWidth] = useState(800);
   const [portfolioData, setPortfolioData] = useState([]);
@@ -14,165 +26,144 @@ const Home = ({ user: userProp, csrfToken, onLogout }) => {
   const [isLoadingCurrentValue, setIsLoadingCurrentValue] = useState(true);
   const [netWorth, setNetWorth] = useState(null);
   const [plaidInfo, setPlaidInfo] = useState(null);
+  const [chartSource, setChartSource] = useState('csv');
   const chartContainerRef = useRef(null);
-  const location = useLocation();
 
-  const getCsrfToken = useCallback(() => {
-    return csrfToken;
-  }, [csrfToken]);
+  const getCsrfToken = useCallback(() => csrfToken, [csrfToken]);
 
   const fetchHomeData = useCallback(async () => {
     try {
       const token = getCsrfToken();
-      if (!token) return;
+      if (!token) return null;
 
       const response = await fetch('/home', {
         credentials: 'include',
-        headers: {
-          'X-CSRF-TOKEN': token,
-        },
+        headers: { 'X-CSRF-TOKEN': token },
       });
 
       if (response.ok) {
         const data = await response.json();
         setCurrentUser(data.user);
-        setMessage(data.message);
-        setStats(data.stats);
         setPlaidInfo(data.plaid || null);
-      } else {
-        console.error('Failed to fetch home data');
+        return data.plaid?.has_items ?? false;
       }
-    } catch (error) {
-      console.error('Error fetching home data:', error);
+      return false;
+    } catch (err) {
+      console.error('Error fetching home data:', err);
+      return false;
     }
-  }, [csrfToken]);
+  }, [getCsrfToken]);
 
-  const fetchPortfolioData = useCallback(async () => {
+  const fetchChartData = useCallback(async (hasPlaid) => {
     try {
       setIsLoadingPortfolio(true);
+      setError('');
       const token = getCsrfToken();
       if (!token) return;
 
-      const response = await fetch('/portfolio-value-over-time', {
-        credentials: 'include',
-        headers: {
-          'X-CSRF-TOKEN': token,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Portfolio data received:', data);
-        setPortfolioData(data.portfolio_values || []);
+      if (hasPlaid) {
+        const response = await fetch('/net-worth-over-time', {
+          credentials: 'include',
+          headers: { 'X-CSRF-TOKEN': token },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+          setPortfolioData(
+            (data.snapshots || []).map((s) => ({ date: s.date, value: s.total })),
+          );
+          setChartSource('plaid');
+        } else {
+          setPortfolioData([]);
+          setChartSource('plaid');
+          setError(data.error || `Unable to load net worth history (${response.status})`);
+        }
       } else {
-        console.error('Failed to fetch portfolio data');
-        setError('Failed to load portfolio data');
-      }
-    } catch (error) {
-      console.error('Error fetching portfolio data:', error);
-      setError('Error loading portfolio data');
-    } finally {
-      setIsLoadingPortfolio(false);
-    }
-  }, [csrfToken]);
-
-  const fetchNetWorth = useCallback(async () => {
-    try {
-      const token = getCsrfToken();
-      if (!token) return;
-
-      const response = await fetch('/net-worth', {
-        credentials: 'include',
-        headers: { 'X-CSRF-TOKEN': token },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.source === 'plaid') {
-          setNetWorth(data);
-          setCurrentPortfolioValue(data.total || 0);
+        const response = await fetch('/portfolio-value-over-time', {
+          credentials: 'include',
+          headers: { 'X-CSRF-TOKEN': token },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setPortfolioData(data.portfolio_values || []);
+          setChartSource('csv');
+        } else {
+          setError('Failed to load portfolio data');
         }
       }
     } catch (err) {
-      console.error('Error fetching net worth:', err);
+      setError('Error loading chart data');
+    } finally {
+      setIsLoadingPortfolio(false);
     }
-  }, [csrfToken]);
+  }, [getCsrfToken]);
 
-  const fetchCurrentPortfolioValue = useCallback(async () => {
+  const fetchCurrentPortfolioValue = useCallback(async (hasPlaid) => {
     try {
       setIsLoadingCurrentValue(true);
       const token = getCsrfToken();
       if (!token) return;
 
-      const nwResponse = await fetch('/net-worth', {
-        credentials: 'include',
-        headers: { 'X-CSRF-TOKEN': token },
-      });
-      if (nwResponse.ok) {
-        const nwData = await nwResponse.json();
-        if (nwData.source === 'plaid' && nwData.total != null) {
-          setNetWorth(nwData);
-          setCurrentPortfolioValue(nwData.total);
-          return;
+      if (hasPlaid) {
+        const nwResponse = await fetch('/net-worth', {
+          credentials: 'include',
+          headers: { 'X-CSRF-TOKEN': token },
+        });
+        if (nwResponse.ok) {
+          const nwData = await nwResponse.json();
+          if (nwData.source === 'plaid' && nwData.total != null) {
+            setNetWorth(nwData);
+            setCurrentPortfolioValue(nwData.total);
+            return;
+          }
         }
       }
 
       const response = await fetch('/current-portfolio-value', {
         credentials: 'include',
-        headers: {
-          'X-CSRF-TOKEN': token,
-        },
+        headers: { 'X-CSRF-TOKEN': token },
       });
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Current portfolio value received:', data);
         setCurrentPortfolioValue(data.current_value || 0);
-      } else {
-        console.error('Failed to fetch current portfolio value');
       }
-    } catch (error) {
-      console.error('Error fetching current portfolio value:', error);
+    } catch (err) {
+      console.error('Error fetching current portfolio value:', err);
     } finally {
       setIsLoadingCurrentValue(false);
     }
-  }, [csrfToken]);
+  }, [getCsrfToken]);
 
   useEffect(() => {
-    if (csrfToken) {
-      fetchHomeData();
-      fetchNetWorth();
-      fetchPortfolioData();
-      fetchCurrentPortfolioValue();
-    }
-  }, [csrfToken, fetchHomeData, fetchNetWorth, fetchPortfolioData, fetchCurrentPortfolioValue]);
+    if (!csrfToken) return;
+    const load = async () => {
+      const hasPlaid = await fetchHomeData();
+      await Promise.all([
+        fetchChartData(hasPlaid),
+        fetchCurrentPortfolioValue(hasPlaid),
+      ]);
+    };
+    load();
+  }, [csrfToken, fetchHomeData, fetchChartData, fetchCurrentPortfolioValue]);
 
-  // Effect to handle chart resizing
   useEffect(() => {
     const handleResize = () => {
       if (chartContainerRef.current) {
         setChartWidth(chartContainerRef.current.offsetWidth);
       }
     };
-
-    // Set initial width after a short delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      handleResize();
-    }, 100);
-
+    const timer = setTimeout(handleResize, 100);
     window.addEventListener('resize', handleResize);
-    
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [isLoadingPortfolio, portfolioData.length]);
 
   const handleLogout = async () => {
     try {
       await fetch('/logout', {
         method: 'POST',
-        credentials: 'include', // Include cookies
+        credentials: 'include',
         headers: {
           'X-CSRF-TOKEN': csrfToken,
           'Content-Type': 'application/json',
@@ -185,218 +176,145 @@ const Home = ({ user: userProp, csrfToken, onLogout }) => {
     }
   };
 
+  const displayTotal = plaidInfo?.has_items
+    ? (netWorth?.total ?? plaidInfo.net_worth ?? 0)
+    : currentPortfolioValue;
+  const cashTotal = netWorth?.cash_total ?? plaidInfo?.cash_total ?? 0;
+  const investTotal = netWorth?.investments_total ?? plaidInfo?.investments_total ?? 0;
+  const institutionCount = plaidInfo?.linked_institutions ?? 0;
+
   return (
     <div>
-      {/* Full-width navbar */}
-      <nav className="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-        <div className="container-fluid">
-          <img src="/capyb.png" alt="Capybara Portfolio" className="navbar-brand" style={{height: '50px', width: 'auto'}} />
-          <button 
-            className="navbar-toggler" 
-            type="button" 
-            data-bs-toggle="collapse" 
-            data-bs-target="#navbarSupportedContent" 
-            aria-controls="navbarSupportedContent" 
-            aria-expanded="false" 
-            aria-label="Toggle navigation"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              <li className="nav-item">
-                <Link 
-                  className={`nav-link ${location.pathname === '/' ? 'active' : ''}`} 
-                  to="/"
-                >
-                  Dashboard
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link
-                  className={`nav-link ${location.pathname === '/accounts' ? 'active' : ''}`}
-                  to="/accounts"
-                >
-                  Accounts
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link
-                  className="nav-link text-muted"
-                  to="/upload"
-                >
-                  CSV fallback
-                </Link>
-              </li>
-              {/* <li className="nav-item">
-                <a className="nav-link" href="/portfolio">Portfolio</a>
-              </li>
-              <li className="nav-item">
-                <a className="nav-link" href="/transactions">Transactions</a>
-              </li>
-              <li className="nav-item dropdown">
-                <a 
-                  className="nav-link dropdown-toggle" 
-                  href="#" 
-                  role="button" 
-                  data-bs-toggle="dropdown" 
-                  aria-expanded="false"
-                >
-                  Reports
-                </a>
-                <ul className="dropdown-menu">
-                  <li><a className="dropdown-item" href="/reports/performance">Performance Report</a></li>
-                  <li><a className="dropdown-item" href="/reports/tax">Tax Report</a></li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li><a className="dropdown-item" href="/reports/custom">Custom Report</a></li>
-                </ul>
-              </li> */}
-            </ul>
-            <div className="d-flex align-items-center">
-              <span className="navbar-text me-3">
-                Welcome, {currentUser?.username || 'User'}
-              </span>
-              <button className="btn btn-outline-danger" onClick={handleLogout}>
-                Logout
-              </button>
-            </div>
+      <DashboardNav
+        username={currentUser?.username}
+        onLogout={handleLogout}
+      />
+
+      <div className="dashboard-page">
+        <div className="capy-hero">
+          <div>
+            <h1 className="capy-hero-greeting">
+              {getGreeting()}, {currentUser?.username || 'there'}
+            </h1>
+            <p className="capy-hero-sub">
+              {plaidInfo?.has_items
+                ? 'Your linked accounts at a glance'
+                : 'Connect accounts or import CSV to get started'}
+            </p>
+          </div>
+          <div className="text-md-end">
+            <p className="capy-hero-label">Total net worth</p>
+            <p className="capy-hero-value">
+              {isLoadingCurrentValue ? '…' : formatMoney(displayTotal)}
+            </p>
           </div>
         </div>
-      </nav>
 
-      {/* Main content container */}
-      <div className="container mt-4">
-        <div className="row mt-4">
-          <div className="col-12">
-            <div className="card">
-              <div className="card-header">
-                <h5 className="card-title mb-0">Portfolio Value Over Time</h5>
-              </div>
-              <div className="card-body">
-                {isLoadingPortfolio ? (
-                  <div className="text-center py-4">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                    <p className="mt-2">Loading portfolio data...</p>
-                  </div>
-                ) : error ? (
-                  <div className="alert alert-danger" role="alert">
-                    {error}
-                  </div>
-                ) : portfolioData.length > 0 ? (
-                  <div ref={chartContainerRef} style={{ width: '100%', height: '400px' }}>
-                    <HomeChart 
-                      width={chartWidth} 
-                      height={400} 
-                      portfolioData={portfolioData}
-                    />
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-muted">No portfolio data available. Upload some transactions to see your portfolio value over time.</p>
-                  </div>
-                )}
-              </div>
+        {plaidInfo?.has_items ? (
+          <div className="row g-3 mb-3">
+            <div className="col-md-4">
+              <StatCard
+                label="Cash"
+                value={formatMoney(cashTotal)}
+                icon="💵"
+                accent="var(--capy-accent-cash)"
+              />
+            </div>
+            <div className="col-md-4">
+              <StatCard
+                label="Investments"
+                value={formatMoney(investTotal)}
+                icon="📈"
+                accent="var(--capy-accent-invest)"
+              />
+            </div>
+            <div className="col-md-4">
+              <StatCard
+                label="Institutions"
+                value={institutionCount}
+                subtitle="Linked via Plaid"
+                icon="🏦"
+                accent="var(--capy-accent-inst)"
+              />
             </div>
           </div>
-        </div>
-        
-        <div className="row">
-          {/* Welcome Card */}
-          <div className="col-md-8">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">Welcome Back!</h5>
-                <p className="card-text">
-                  {message || 'Welcome to your portfolio dashboard!'}
-                </p>
-                
-                {stats && (
-                  <div className="row mt-4">
-                    {plaidInfo?.has_items ? (
-                      <>
-                        <div className="col-sm-4">
-                          <div className="border rounded p-3 text-center">
-                            <h4 className="text-success">
-                              ${(netWorth?.total ?? plaidInfo.net_worth ?? 0).toLocaleString()}
-                            </h4>
-                            <small className="text-muted">Net worth (Plaid)</small>
-                          </div>
-                        </div>
-                        <div className="col-sm-4">
-                          <div className="border rounded p-3 text-center">
-                            <h4 className="text-primary">${(netWorth?.investments_total ?? plaidInfo.investments_total ?? 0).toLocaleString()}</h4>
-                            <small className="text-muted">Investments</small>
-                          </div>
-                        </div>
-                        <div className="col-sm-4">
-                          <div className="border rounded p-3 text-center">
-                            <h4 className="text-info">${(netWorth?.cash_total ?? plaidInfo.cash_total ?? 0).toLocaleString()}</h4>
-                            <small className="text-muted">Cash</small>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="col-sm-6">
-                          <div className="border rounded p-3 text-center">
-                            <h4 className="text-primary">{stats.total_transactions}</h4>
-                            <small className="text-muted">CSV transactions</small>
-                          </div>
-                        </div>
-                        <div className="col-sm-6">
-                          <div className="border rounded p-3 text-center">
-                            <h4 className="text-success">
-                              {isLoadingCurrentValue ? (
-                                <div className="spinner-border spinner-border-sm text-success" role="status">
-                                  <span className="visually-hidden">Loading...</span>
-                                </div>
-                              ) : (
-                                `$${currentPortfolioValue.toLocaleString()}`
-                              )}
-                            </h4>
-                            <small className="text-muted">Portfolio (CSV + yfinance)</small>
-                          </div>
-                        </div>
-                        <div className="col-12 mt-3">
-                          <Link to="/accounts" className="btn btn-primary">
-                            Connect an institution via Plaid
-                          </Link>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+        ) : (
+          <div className="row g-3 mb-3">
+            <div className="col-md-6">
+              <StatCard
+                label="Portfolio value"
+                value={isLoadingCurrentValue ? '…' : formatMoney(currentPortfolioValue)}
+                subtitle="CSV + yfinance"
+                icon="📊"
+                accent="var(--capy-primary)"
+              />
+            </div>
+            <div className="col-md-6">
+              <StatCard
+                label="Linked accounts"
+                value="None yet"
+                subtitle="Connect via Plaid on Accounts"
+                icon="🔗"
+                accent="var(--capy-muted)"
+              />
             </div>
           </div>
+        )}
 
-          {/* Quick Actions */}
-          <div className="col-md-4">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">Quick Actions</h5>
-                <div className="d-grid gap-2">
-                  <Link to="/accounts" className="btn btn-primary">
-                    Link accounts (Plaid)
-                  </Link>
-                  <Link to="/upload" className="btn btn-outline-secondary btn-sm">
-                    CSV import (fallback)
-                  </Link>
+        <div className="capy-card">
+          <div className="capy-card-header">
+            <h5>
+              {chartSource === 'plaid' ? 'Net Worth Over Time' : 'Portfolio Value Over Time'}
+            </h5>
+            <span className="capy-badge">{chartSource === 'plaid' ? 'Plaid' : 'CSV'}</span>
+          </div>
+          <div className="capy-card-body">
+            {isLoadingPortfolio ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-success" role="status" />
+                <p className="mt-2 text-muted">Loading chart…</p>
+              </div>
+            ) : error ? (
+              <div className="alert alert-danger mb-0">{error}</div>
+            ) : portfolioData.length > 0 ? (
+              <>
+                <div ref={chartContainerRef} className="capy-chart-wrap" style={{ height: CHART_HEIGHT }}>
+                  <HomeChart
+                    width={chartWidth}
+                    height={CHART_HEIGHT}
+                    portfolioData={portfolioData}
+                  />
                 </div>
+                {chartSource === 'plaid' && portfolioData.length === 1 && (
+                  <p className="capy-chart-footnote">
+                    One data point recorded — your trend line will appear after the next daily sync.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-muted mb-0">
+                  {chartSource === 'plaid'
+                    ? 'History builds after each sync — go to Accounts and click Refresh.'
+                    : 'No portfolio data yet. Upload transactions or connect accounts via Plaid.'}
+                </p>
               </div>
-            </div>
-          </div>
-
-          {/* Session Info */}
-          <div className="col-12 mt-4">
-            <div className="alert alert-info">
-              <i className="bi bi-info-circle me-2"></i>
-              Your session will expire after 15 minutes of inactivity. Moving your mouse, clicking, or typing will keep you logged in.
-            </div>
+            )}
           </div>
         </div>
+
+        <div className="capy-actions">
+          <Link to="/accounts" className="btn capy-btn-primary">
+            View details
+          </Link>
+          <Link to="/upload" className="btn btn-outline-secondary capy-btn-outline">
+            CSV import
+          </Link>
+        </div>
+
+        <p className="capy-footer-note">
+          Session expires after 15 minutes of inactivity.
+        </p>
       </div>
     </div>
   );

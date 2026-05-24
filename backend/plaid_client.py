@@ -10,15 +10,15 @@ from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchan
 from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
 from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
 from plaid.model.item_get_request import ItemGetRequest
+from plaid.model.transactions_sync_request import TransactionsSyncRequest
 
 
 def _plaid_env():
     env = (os.getenv('PLAID_ENV') or 'sandbox').lower()
-    return {
-        'sandbox': Environment.Sandbox,
-        'development': Environment.Development,
-        'production': Environment.Production,
-    }.get(env, Environment.Sandbox)
+    if env == 'production':
+        return Environment.Production
+    # plaid-python only exposes Sandbox and Production (no Development)
+    return Environment.Sandbox
 
 
 def get_plaid_client() -> plaid_api.PlaidApi:
@@ -40,7 +40,7 @@ def _to_dict(response):
 def create_link_token(client_user_id: str) -> str:
     client = get_plaid_client()
     request = LinkTokenCreateRequest(
-        products=[Products('investments'), Products('balance')],
+        products=[Products('investments'), Products('transactions')],
         client_name='Capybara Portfolio',
         country_codes=[CountryCode('US')],
         language='en',
@@ -75,5 +75,16 @@ def get_balances(access_token: str) -> dict:
     client = get_plaid_client()
     response = client.accounts_balance_get(
         AccountsBalanceGetRequest(access_token=access_token)
+    )
+    return _to_dict(response)
+
+
+def sync_transactions(access_token: str, cursor: str | None = None) -> dict:
+    client = get_plaid_client()
+    response = client.transactions_sync(
+        TransactionsSyncRequest(
+            access_token=access_token,
+            cursor=cursor or '',
+        )
     )
     return _to_dict(response)
