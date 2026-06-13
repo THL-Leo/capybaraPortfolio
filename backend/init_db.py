@@ -92,19 +92,6 @@ CREATE TABLE IF NOT EXISTS plaid_card_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_plaid_card_tx_user_date ON plaid_card_transactions(user_id, transaction_date);
 CREATE INDEX IF NOT EXISTS idx_plaid_card_tx_account ON plaid_card_transactions(account_id);
-
-CREATE TABLE IF NOT EXISTS spending_budgets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    category TEXT NOT NULL,
-    month TEXT NOT NULL,
-    limit_amount REAL NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, category, month),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_spending_budgets_user_month ON spending_budgets(user_id, month);
 """
 
 

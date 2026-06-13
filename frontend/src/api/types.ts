@@ -101,13 +101,14 @@ export interface SpendingWeek {
   label?: string;
 }
 
-export interface BudgetRow {
-  budget_id?: number | null;
-  category: string;
-  category_key?: string;
-  actual: number;
-  limit?: number | null;
-  remaining?: number | null;
+export interface SpendingAnalyticsResponse {
+  spending_summary: {
+    month_to_date: number;
+    month_label: string;
+    month: string;
+  };
+  by_category: SpendingCategory[];
+  by_week: SpendingWeek[];
 }
 
 export interface Transaction {
@@ -145,17 +146,6 @@ export interface AccountsResponse {
   holdings_analytics: Holding[];
   allocation: { total: number; slices: AllocationSlice[] };
   credit_cards: PlaidAccount[];
-}
-
-export interface SpendingAnalyticsResponse {
-  spending_summary: {
-    month_to_date: number;
-    month_label: string;
-    month: string;
-  };
-  by_category: SpendingCategory[];
-  by_week: SpendingWeek[];
-  budgets: BudgetRow[];
 }
 
 export interface MonthlySpendingTotal {

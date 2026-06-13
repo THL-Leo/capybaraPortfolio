@@ -20,7 +20,6 @@ Flask API for Plaid-linked net worth tracking and credit card spending.
 | `plaid_holdings` | Investment positions |
 | `plaid_card_transactions` | Credit/checking transactions |
 | `net_worth_snapshots` | Daily net worth history with bucket breakdown |
-| `spending_budgets` | Monthly category budgets |
 
 Legacy tables (`transactions`, `price_cache`) are no longer created for new databases. Existing databases keep them but they are unused.
 
@@ -86,11 +85,9 @@ Snapshots store a JSON `breakdown` column with per-bucket values.
 
 | Method | Path | Response |
 |--------|------|----------|
-| GET | `/spending/analytics` | `{ spending_summary, by_category, by_week, budgets }` — `?month=YYYY-MM` |
+| GET | `/spending/analytics` | `{ spending_summary, by_category, by_week }` — `?month=YYYY-MM` |
 | GET | `/spending/monthly-totals` | `{ months: [{ month, month_label, total }] }` — `?months=12` |
-| GET/POST | `/spending/budgets` | `{ budgets }` |
-| DELETE | `/spending/budgets/:id` | `{ message }` |
-| GET | `/accounts/:id/spending` | `{ summary, by_category, by_week, budgets }` |
+| GET | `/accounts/:id/spending` | `{ summary, by_category, by_week }` |
 | GET | `/accounts/:id/transactions` | `{ transactions }` |
 
 ## Sync pipeline

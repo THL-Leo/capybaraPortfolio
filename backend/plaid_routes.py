@@ -25,13 +25,9 @@ from portfolio import (
     user_has_plaid_items,
 )
 from spending import (
-    delete_budget,
-    get_budget_vs_actual,
-    get_budgets,
     get_monthly_spending_totals,
     get_spending_by_category,
     get_spending_by_week,
-    upsert_budget,
 )
 
 plaid_bp = Blueprint('plaid', __name__)
@@ -188,7 +184,6 @@ def accounts():
         'spending_summary': compute_spending_summary(db, user_id),
         'spending_by_category': get_spending_by_category(db, user_id, month),
         'spending_by_week': get_spending_by_week(db, user_id),
-        'budgets': get_budget_vs_actual(db, user_id, month),
     }), 200
 
 
@@ -240,7 +235,6 @@ def account_spending(account_id):
         'summary': compute_spending_summary(db, user_id, account_id=account_id, month=month),
         'by_category': get_spending_by_category(db, user_id, month, account_id=account_id),
         'by_week': get_spending_by_week(db, user_id, account_id=account_id),
-        'budgets': get_budget_vs_actual(db, user_id, month, account_id=account_id),
     }), 200
 
 
@@ -254,7 +248,6 @@ def spending_analytics():
         'spending_summary': compute_spending_summary(db, user_id, month=month),
         'by_category': get_spending_by_category(db, user_id, month),
         'by_week': get_spending_by_week(db, user_id),
-        'budgets': get_budget_vs_actual(db, user_id, month),
     }), 200
 
 
@@ -269,49 +262,6 @@ def spending_monthly_totals():
     return jsonify({
         'months': get_monthly_spending_totals(get_db(), user_id, months),
     }), 200
-
-
-@plaid_bp.route('/spending/budgets', methods=['GET', 'POST'])
-@jwt_required()
-def spending_budgets():
-    user_id = int(get_jwt_identity())
-    db = get_db()
-    month = request.args.get('month') or datetime.now(timezone.utc).strftime('%Y-%m')
-
-    if request.method == 'GET':
-        return jsonify({
-            'month': month,
-            'budgets': get_budget_vs_actual(db, user_id, month),
-        }), 200
-
-    data = request.get_json() or {}
-    category = data.get('category')
-    limit_amount = data.get('limit_amount')
-    if not category or limit_amount is None:
-        return jsonify({'error': 'category and limit_amount are required'}), 400
-
-    try:
-        limit_val = float(limit_amount)
-    except (TypeError, ValueError):
-        return jsonify({'error': 'limit_amount must be a number'}), 400
-
-    if limit_val < 0:
-        return jsonify({'error': 'limit_amount must be non-negative'}), 400
-
-    row = upsert_budget(db, user_id, category, data.get('month') or month, limit_val)
-    return jsonify({
-        'budget': row,
-        'budgets': get_budget_vs_actual(db, user_id, data.get('month') or month),
-    }), 200
-
-
-@plaid_bp.route('/spending/budgets/<int:budget_id>', methods=['DELETE'])
-@jwt_required()
-def spending_budget_delete(budget_id):
-    user_id = int(get_jwt_identity())
-    if not delete_budget(get_db(), user_id, budget_id):
-        return jsonify({'error': 'Budget not found'}), 404
-    return jsonify({'message': 'Budget deleted'}), 200
 
 
 @plaid_bp.route('/portfolio/allocation', methods=['GET'])

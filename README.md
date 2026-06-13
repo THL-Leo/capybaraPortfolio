@@ -7,7 +7,7 @@ Plaid-first daily net worth tracker with credit card spending insights.
 | Priority | Feature |
 |----------|---------|
 | **P1** | Net worth by bucket: checking, savings, HYSA, brokerage, 401k, Roth IRA |
-| **P2** | Credit card spending analytics and budgets |
+| **P2** | Credit card spending analytics |
 
 ## Stack
 
