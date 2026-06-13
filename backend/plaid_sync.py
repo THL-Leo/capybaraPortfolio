@@ -28,14 +28,14 @@ def _category_primary(tx):
     return None
 
 
-def _upsert_card_transaction(cursor, user_id, tx, synced_at):
+def _upsert_spending_transaction(cursor, user_id, tx, synced_at, account_type: str):
     cursor.execute(
         '''
         INSERT INTO plaid_card_transactions (
             user_id, account_id, transaction_id, transaction_date, name,
             merchant_name, amount, iso_currency_code, pending, category_primary,
-            last_synced_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            last_synced_at, account_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(transaction_id) DO UPDATE SET
             account_id = excluded.account_id,
             transaction_date = excluded.transaction_date,
@@ -45,7 +45,8 @@ def _upsert_card_transaction(cursor, user_id, tx, synced_at):
             iso_currency_code = excluded.iso_currency_code,
             pending = excluded.pending,
             category_primary = excluded.category_primary,
-            last_synced_at = excluded.last_synced_at
+            last_synced_at = excluded.last_synced_at,
+            account_type = excluded.account_type
         ''',
         (
             user_id,
@@ -59,22 +60,23 @@ def _upsert_card_transaction(cursor, user_id, tx, synced_at):
             1 if tx.get('pending') else 0,
             _category_primary(tx),
             synced_at,
+            account_type,
         ),
     )
 
 
-def _sync_credit_transactions(db, user_id, item_id, access_token, item_row) -> int:
-    credit_account_ids = {
-        r[0]
+def _sync_spending_transactions(db, user_id, item_id, access_token, item_row) -> int:
+    spending_accounts = {
+        r[0]: r[1]
         for r in db.execute(
             '''
-            SELECT account_id FROM plaid_accounts
-            WHERE user_id = ? AND item_id = ? AND type = 'credit'
+            SELECT account_id, type FROM plaid_accounts
+            WHERE user_id = ? AND item_id = ? AND type IN ('credit', 'depository')
             ''',
             (user_id, item_id),
         ).fetchall()
     }
-    if not credit_account_ids:
+    if not spending_accounts:
         return 0
 
     cursor_str = item_row.get('transactions_cursor') or ''
@@ -85,9 +87,12 @@ def _sync_credit_transactions(db, user_id, item_id, access_token, item_row) -> i
     while True:
         data = sync_transactions(access_token, cursor_str)
         for tx in data.get('added', []) + data.get('modified', []):
-            if tx.get('account_id') not in credit_account_ids:
+            account_id = tx.get('account_id')
+            if account_id not in spending_accounts:
                 continue
-            _upsert_card_transaction(cursor, user_id, tx, synced_at)
+            _upsert_spending_transaction(
+                cursor, user_id, tx, synced_at, spending_accounts[account_id],
+            )
             tx_synced += 1
 
         for removed in data.get('removed', []):
@@ -251,7 +256,7 @@ def sync_item_for_user(db, user_id: int, item_row) -> dict:
                 (item_id, user_id),
             ).fetchone()
         )
-        transactions_synced = _sync_credit_transactions(
+        transactions_synced = _sync_spending_transactions(
             db, user_id, item_id, access_token, item_row,
         )
     except ApiException as e:

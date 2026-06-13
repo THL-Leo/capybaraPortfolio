@@ -10,18 +10,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    symbol TEXT NOT NULL,
-    transaction_type TEXT NOT NULL,
-    quantity REAL NOT NULL,
-    price REAL NOT NULL,
-    transaction_date TEXT NOT NULL,
-    notes TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
 CREATE TABLE IF NOT EXISTS plaid_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -70,12 +58,6 @@ CREATE TABLE IF NOT EXISTS plaid_holdings (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS price_cache (
-    symbol TEXT PRIMARY KEY,
-    price REAL NOT NULL,
-    updated_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS net_worth_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -87,7 +69,6 @@ CREATE TABLE IF NOT EXISTS net_worth_snapshots (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_plaid_items_user ON plaid_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_plaid_accounts_user ON plaid_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_plaid_holdings_user ON plaid_holdings(user_id);
@@ -111,6 +92,19 @@ CREATE TABLE IF NOT EXISTS plaid_card_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_plaid_card_tx_user_date ON plaid_card_transactions(user_id, transaction_date);
 CREATE INDEX IF NOT EXISTS idx_plaid_card_tx_account ON plaid_card_transactions(account_id);
+
+CREATE TABLE IF NOT EXISTS spending_budgets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    category TEXT NOT NULL,
+    month TEXT NOT NULL,
+    limit_amount REAL NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, category, month),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_spending_budgets_user_month ON spending_budgets(user_id, month);
 """
 
 
@@ -118,6 +112,20 @@ def run_migrations(conn):
     cols = {r[1] for r in conn.execute('PRAGMA table_info(plaid_items)').fetchall()}
     if 'transactions_cursor' not in cols:
         conn.execute('ALTER TABLE plaid_items ADD COLUMN transactions_cursor TEXT')
+
+    tx_cols = {r[1] for r in conn.execute('PRAGMA table_info(plaid_card_transactions)').fetchall()}
+    if 'account_type' not in tx_cols:
+        conn.execute(
+            "ALTER TABLE plaid_card_transactions ADD COLUMN account_type TEXT DEFAULT 'credit'"
+        )
+
+    nw_cols = {r[1] for r in conn.execute('PRAGMA table_info(net_worth_snapshots)').fetchall()}
+    if 'breakdown' not in nw_cols:
+        conn.execute('ALTER TABLE net_worth_snapshots ADD COLUMN breakdown TEXT')
+    if 'assets_total' not in nw_cols:
+        conn.execute('ALTER TABLE net_worth_snapshots ADD COLUMN assets_total REAL')
+    if 'liabilities_total' not in nw_cols:
+        conn.execute('ALTER TABLE net_worth_snapshots ADD COLUMN liabilities_total REAL')
 
 
 def init_db(verbose=False):

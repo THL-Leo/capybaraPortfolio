@@ -1,6 +1,49 @@
-"""Net worth and holdings from Plaid tables, with legacy CSV fallback."""
+"""Net worth and holdings from Plaid tables."""
 
+import json
 from datetime import datetime, timezone
+
+ASSET_BUCKETS = (
+    'checking',
+    'savings',
+    'hysa',
+    'brokerage',
+    'retirement_401k',
+    'retirement_roth',
+)
+
+
+def classify_account(acc: dict) -> str:
+    """Map a Plaid account to a net worth bucket."""
+    acc_type = (acc.get('type') or '').lower()
+    subtype = (acc.get('subtype') or '').lower()
+    name = f"{acc.get('name') or ''} {acc.get('official_name') or ''}".lower()
+
+    if acc_type == 'credit':
+        return 'liability'
+
+    if acc_type == 'depository':
+        if subtype == 'checking':
+            return 'checking'
+        if subtype == 'savings':
+            if 'hysa' in name or 'high yield' in name:
+                return 'hysa'
+            return 'savings'
+        return 'savings'
+
+    if acc_type == 'investment':
+        combined = f'{subtype} {name}'
+        if '401k' in combined or '401a' in combined:
+            return 'retirement_401k'
+        if 'roth' in combined or 'ira' in combined:
+            return 'retirement_roth'
+        return 'brokerage'
+
+    return 'brokerage'
+
+
+def _empty_breakdown() -> dict[str, float]:
+    return {b: 0.0 for b in ASSET_BUCKETS}
 
 
 def user_has_plaid_items(db, user_id: int) -> bool:
@@ -41,40 +84,83 @@ def get_credit_accounts(db, user_id: int) -> list:
     return [a for a in get_plaid_accounts(db, user_id) if a.get('type') == 'credit']
 
 
-def get_card_transactions(db, user_id: int, limit: int = 100) -> list:
-    rows = db.execute(
+def get_account_with_institution(db, user_id: int, account_id: str) -> dict | None:
+    row = db.execute(
         '''
+        SELECT a.account_id, a.item_id, a.name, a.official_name, a.type, a.subtype,
+               a.mask, a.current_balance, a.available_balance, a.currency,
+               a.last_synced_at, i.institution_name, i.institution_id
+        FROM plaid_accounts a
+        LEFT JOIN plaid_items i ON i.item_id = a.item_id AND i.user_id = a.user_id
+        WHERE a.user_id = ? AND a.account_id = ?
+        ''',
+        (user_id, account_id),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def get_card_transactions(
+    db,
+    user_id: int,
+    account_id: str | None = None,
+    month: str | None = None,
+    limit: int = 100,
+) -> list:
+    where = ['user_id = ?']
+    params: list = [user_id]
+    if account_id:
+        where.append('account_id = ?')
+        params.append(account_id)
+    if month:
+        where.append('transaction_date LIKE ?')
+        params.append(f'{month}%')
+    sql = f'''
         SELECT account_id, transaction_id, transaction_date, name, merchant_name,
-               amount, iso_currency_code, pending, category_primary, last_synced_at
+               amount, iso_currency_code, pending, category_primary,
+               account_type, last_synced_at
         FROM plaid_card_transactions
-        WHERE user_id = ?
+        WHERE {' AND '.join(where)}
         ORDER BY transaction_date DESC, transaction_id DESC
         LIMIT ?
-        ''',
-        (user_id, limit),
-    ).fetchall()
+    '''
+    params.append(limit)
+    rows = db.execute(sql, tuple(params)).fetchall()
     return [dict(r) for r in rows]
 
 
-def compute_spending_summary(db, user_id: int) -> dict:
-    """Sum credit-card purchases (positive amounts) for the current UTC month."""
-    now = datetime.now(timezone.utc)
-    month_prefix = now.strftime('%Y-%m')
+def compute_spending_summary(
+    db,
+    user_id: int,
+    account_id: str | None = None,
+    month: str | None = None,
+) -> dict:
+    """Sum credit-card purchases (positive amounts) for the requested month."""
+    if month:
+        try:
+            label = datetime.strptime(month, '%Y-%m').strftime('%B %Y')
+        except ValueError:
+            label = month
+        month_prefix = month
+    else:
+        now = datetime.now(timezone.utc)
+        month_prefix = now.strftime('%Y-%m')
+        label = now.strftime('%B %Y')
+
+    where = ['user_id = ?', 'pending = 0', 'amount > 0', 'transaction_date LIKE ?']
+    params: list = [user_id, f'{month_prefix}%']
+    if account_id:
+        where.append('account_id = ?')
+        params.append(account_id)
+
     row = db.execute(
-        '''
-        SELECT COALESCE(SUM(amount), 0)
-        FROM plaid_card_transactions
-        WHERE user_id = ?
-          AND pending = 0
-          AND amount > 0
-          AND transaction_date LIKE ?
-        ''',
-        (user_id, f'{month_prefix}%'),
+        f'SELECT COALESCE(SUM(amount), 0) FROM plaid_card_transactions WHERE {" AND ".join(where)}',
+        tuple(params),
     ).fetchone()
     month_to_date = round(float(row[0] if row else 0), 2)
     return {
         'month_to_date': month_to_date,
-        'month_label': now.strftime('%B %Y'),
+        'month_label': label,
+        'month': month_prefix,
     }
 
 
@@ -91,31 +177,71 @@ def get_plaid_items(db, user_id: int) -> list:
     return [dict(r) for r in rows]
 
 
+def _holding_value(h: dict) -> float:
+    val = h.get('institution_value')
+    if val is not None:
+        return float(val)
+    if h.get('quantity') and h.get('institution_price'):
+        return float(h['quantity']) * float(h['institution_price'])
+    return 0.0
+
+
 def compute_net_worth_from_plaid(db, user_id: int) -> dict:
     accounts = get_plaid_accounts(db, user_id)
     holdings = get_plaid_holdings(db, user_id)
 
-    cash_total = 0.0
+    breakdown = _empty_breakdown()
+    liabilities_total = 0.0
     cash_accounts = []
-    for acc in accounts:
-        if acc['type'] == 'depository':
-            bal = acc['current_balance'] or 0.0
-            cash_total += bal
-            cash_accounts.append({**acc, 'balance': bal})
 
-    investments_total = 0.0
+    account_bucket = {a['account_id']: classify_account(a) for a in accounts}
+
+    for acc in accounts:
+        bal = float(acc['current_balance'] or 0.0)
+        bucket = account_bucket[acc['account_id']]
+
+        if bucket == 'liability':
+            liabilities_total += bal
+            continue
+
+        if acc['type'] == 'depository':
+            breakdown[bucket] = breakdown.get(bucket, 0.0) + bal
+            cash_accounts.append({**acc, 'balance': bal, 'bucket': bucket})
+        elif acc['type'] == 'investment' and bal > 0:
+            breakdown[bucket] = breakdown.get(bucket, 0.0) + bal
+
     for h in holdings:
-        val = h['institution_value']
-        if val is not None:
-            investments_total += val
-        elif h['quantity'] and h['institution_price']:
-            investments_total += h['quantity'] * h['institution_price']
+        bucket = account_bucket.get(h['account_id'], 'brokerage')
+        if bucket == 'liability':
+            continue
+        val = _holding_value(h)
+        breakdown[bucket] = breakdown.get(bucket, 0.0) + val
+
+    for key in breakdown:
+        breakdown[key] = round(breakdown[key], 2)
+    liabilities_total = round(liabilities_total, 2)
+
+    assets_total = round(sum(breakdown.values()), 2)
+    net_worth = round(assets_total - liabilities_total, 2)
+
+    cash_total = round(
+        breakdown['checking'] + breakdown['savings'] + breakdown['hysa'], 2
+    )
+    investments_total = round(
+        breakdown['brokerage']
+        + breakdown['retirement_401k']
+        + breakdown['retirement_roth'],
+        2,
+    )
 
     return {
         'source': 'plaid',
-        'cash_total': round(cash_total, 2),
-        'investments_total': round(investments_total, 2),
-        'total': round(cash_total + investments_total, 2),
+        'breakdown': breakdown,
+        'assets_total': assets_total,
+        'liabilities_total': liabilities_total,
+        'total': net_worth,
+        'cash_total': cash_total,
+        'investments_total': investments_total,
         'cash_accounts': cash_accounts,
         'holdings': holdings,
         'accounts': accounts,
@@ -131,6 +257,7 @@ def record_net_worth_snapshot(db, user_id: int) -> dict | None:
     now = datetime.now(timezone.utc)
     recorded_at = now.isoformat()
     day = now.strftime('%Y-%m-%d')
+    breakdown_json = json.dumps(nw['breakdown'])
 
     existing = db.execute(
         '''
@@ -145,19 +272,39 @@ def record_net_worth_snapshot(db, user_id: int) -> dict | None:
         db.execute(
             '''
             UPDATE net_worth_snapshots
-            SET recorded_at = ?, total = ?, cash_total = ?, investments_total = ?, source = 'plaid'
+            SET recorded_at = ?, total = ?, cash_total = ?, investments_total = ?,
+                assets_total = ?, liabilities_total = ?, breakdown = ?, source = 'plaid'
             WHERE id = ?
             ''',
-            (recorded_at, nw['total'], nw['cash_total'], nw['investments_total'], existing[0]),
+            (
+                recorded_at,
+                nw['total'],
+                nw['cash_total'],
+                nw['investments_total'],
+                nw['assets_total'],
+                nw['liabilities_total'],
+                breakdown_json,
+                existing[0],
+            ),
         )
     else:
         db.execute(
             '''
             INSERT INTO net_worth_snapshots
-            (user_id, recorded_at, total, cash_total, investments_total, source)
-            VALUES (?, ?, ?, ?, ?, 'plaid')
+            (user_id, recorded_at, total, cash_total, investments_total,
+             assets_total, liabilities_total, breakdown, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'plaid')
             ''',
-            (user_id, recorded_at, nw['total'], nw['cash_total'], nw['investments_total']),
+            (
+                user_id,
+                recorded_at,
+                nw['total'],
+                nw['cash_total'],
+                nw['investments_total'],
+                nw['assets_total'],
+                nw['liabilities_total'],
+                breakdown_json,
+            ),
         )
     db.commit()
     return nw
@@ -166,7 +313,8 @@ def record_net_worth_snapshot(db, user_id: int) -> dict | None:
 def get_net_worth_snapshots(db, user_id: int) -> list:
     rows = db.execute(
         '''
-        SELECT recorded_at, total, cash_total, investments_total, source
+        SELECT recorded_at, total, cash_total, investments_total,
+               assets_total, liabilities_total, breakdown, source
         FROM net_worth_snapshots
         WHERE user_id = ?
         ORDER BY recorded_at ASC
@@ -177,11 +325,68 @@ def get_net_worth_snapshots(db, user_id: int) -> list:
     for row in rows:
         r = dict(row)
         date_str = r['recorded_at'][:10] if r['recorded_at'] else ''
+        breakdown = _empty_breakdown()
+        if r.get('breakdown'):
+            try:
+                parsed = json.loads(r['breakdown'])
+                breakdown.update({k: float(v) for k, v in parsed.items()})
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
         snapshots.append({
             'date': date_str,
             'total': r['total'],
             'cash_total': r['cash_total'],
             'investments_total': r['investments_total'],
+            'assets_total': r.get('assets_total'),
+            'liabilities_total': r.get('liabilities_total'),
+            'breakdown': breakdown,
             'source': r['source'],
         })
     return snapshots
+
+
+def get_holdings_with_pnl(db, user_id: int) -> list:
+    holdings = get_plaid_holdings(db, user_id)
+    enriched = []
+    for h in holdings:
+        value = _holding_value(h)
+        cost = h.get('cost_basis')
+        gain = None
+        gain_pct = None
+        if cost is not None and cost > 0:
+            gain = round(value - cost, 2)
+            gain_pct = round((gain / cost) * 100, 2)
+        enriched.append({
+            **h,
+            'market_value': round(value, 2),
+            'unrealized_gain': gain,
+            'unrealized_gain_pct': gain_pct,
+        })
+    return enriched
+
+
+def get_allocation(db, user_id: int) -> dict:
+    holdings = get_plaid_holdings(db, user_id)
+    buckets: dict[str, float] = {}
+    total = 0.0
+    for h in holdings:
+        value = _holding_value(h)
+        ticker = (h.get('ticker_symbol') or '').upper()
+        if ticker in ('', 'CASH', 'CUR:USD', 'USD'):
+            label = 'Cash & equivalents'
+        elif ticker:
+            label = 'Equities & funds'
+        else:
+            label = 'Other'
+        buckets[label] = buckets.get(label, 0.0) + value
+        total += value
+
+    slices = [
+        {
+            'label': label,
+            'value': round(val, 2),
+            'percent': round((val / total) * 100, 1) if total > 0 else 0,
+        }
+        for label, val in sorted(buckets.items(), key=lambda x: -x[1])
+    ]
+    return {'total': round(total, 2), 'slices': slices}

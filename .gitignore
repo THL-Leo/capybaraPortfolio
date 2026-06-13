@@ -28,3 +28,6 @@ yarn-error.log*
 test.db
 *.csv
 cookies.txt
+backend/output.txt
+frontend/build/
+frontend/dist/

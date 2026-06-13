@@ -37,15 +37,29 @@ def _to_dict(response):
     return response.to_dict() if hasattr(response, 'to_dict') else dict(response)
 
 
-def create_link_token(client_user_id: str) -> str:
+def create_link_token(client_user_id: str, access_token: str | None = None) -> str:
     client = get_plaid_client()
-    request = LinkTokenCreateRequest(
-        products=[Products('investments'), Products('transactions')],
-        client_name='Capybara Portfolio',
-        country_codes=[CountryCode('US')],
-        language='en',
-        user=LinkTokenCreateRequestUser(client_user_id=client_user_id),
-    )
+    user = LinkTokenCreateRequestUser(client_user_id=client_user_id)
+    kwargs = {
+        'client_name': 'Capybara Portfolio',
+        'country_codes': [CountryCode('US')],
+        'language': 'en',
+        'user': user,
+    }
+    if access_token:
+        kwargs['access_token'] = access_token
+    else:
+        kwargs['products'] = [Products('investments'), Products('transactions')]
+
+    redirect_uri = os.getenv('PLAID_REDIRECT_URI')
+    if redirect_uri:
+        kwargs['redirect_uri'] = redirect_uri
+
+    webhook = os.getenv('PLAID_WEBHOOK_URL')
+    if webhook:
+        kwargs['webhook'] = webhook
+
+    request = LinkTokenCreateRequest(**kwargs)
     response = client.link_token_create(request)
     return response['link_token']
 

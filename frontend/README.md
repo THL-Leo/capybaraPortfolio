@@ -1,70 +1,73 @@
-# Getting Started with Create React App
+# Capybara Portfolio — Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Vite + React 19 + TypeScript dashboard for net worth and spending.
 
-## Available Scripts
+## Stack
 
-In the project directory, you can run:
+- **Vite** — dev server and build
+- **React 19** + **TypeScript**
+- **Tailwind CSS** — styling
+- **shadcn/ui** — UI components
+- **Recharts** — net worth and spending charts
+- **react-plaid-link** — Plaid Link integration
+- **react-router-dom** — client routing
 
-### `npm start`
+## Pages
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+| Route | Page | API calls |
+|-------|------|-----------|
+| `/` | Overview | `GET /home`, `/net-worth`, `/net-worth-over-time` |
+| `/accounts` | Accounts | `GET /accounts`, `/portfolio/holdings-analytics`, `/portfolio/allocation`; Plaid link/sync/delete |
+| `/spending` | Spending | `GET /spending/analytics`; budgets CRUD |
+| `/accounts/:id` | Account detail | `GET /accounts/:id`, `/accounts/:id/spending`, `/accounts/:id/transactions` |
+| `/login` | Login | `POST /login` |
+| `/register` | Register | `POST /register` |
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Auth
 
-### `npm test`
+JWT stored in httpOnly cookie (`access_token_cookie`). CSRF token read from `csrf_access_token` cookie and sent as `X-CSRF-TOKEN` header on all authenticated requests. See `src/context/AuthContext.tsx` and `src/api/client.ts`.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Folder structure
 
-### `npm run build`
+```
+src/
+├── api/client.ts, types.ts
+├── context/AuthContext.tsx
+├── hooks/useNetWorth.ts, useAccounts.ts, useSpending.ts
+├── components/layout/     AppShell, Nav, ProtectedRoute
+├── components/charts/     NetWorthChart, CategoryChart
+├── components/ui/         shadcn components
+├── pages/                 Overview, Accounts, Spending, AccountDetail, Login, Register
+├── lib/utils.ts           formatMoney, formatCategory
+└── App.tsx
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Theme tokens
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Capybara palette (from legacy dashboard):
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Token | Value |
+|-------|-------|
+| Background | `#f7f4ef` |
+| Primary | `#5c7a4a` |
+| Text | `#2d2a26` |
 
-### `npm run eject`
+Configured in `tailwind.config.js` as `capy-*` colors.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Dev proxy
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Vite proxies `/api` requests to Flask at `http://127.0.0.1:5000`. Set `VITE_API_URL` for production builds.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```bash
+npm run dev    # http://localhost:5173
+npm run build  # production bundle
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## What was removed
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Create React App (CRA) and `react-scripts`
+- Bootstrap CSS
+- Visx charts
+- CSV upload page and `/upload` route
+- TanStack Query, Redux
+- Monolithic `Accounts.js` tab layout (split into Overview / Accounts / Spending pages)
