@@ -3,21 +3,13 @@ import { usePlaidLink } from 'react-plaid-link';
 import { apiDelete, apiPost } from '@/api/client';
 import { useAccounts } from '@/hooks/useAccounts';
 import { AccountsGroupedTable } from '@/components/AccountsGroupedTable';
+import { HoldingsGrid } from '@/components/HoldingsGrid';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { groupAccountsBySection } from '@/lib/accountGroups';
-import { formatMoney } from '@/lib/utils';
 
 export default function Accounts() {
   const { data, loading, error, refresh } = useAccounts();
@@ -187,36 +179,7 @@ export default function Accounts() {
           {holdings.length === 0 ? (
             <p className="p-6 text-sm text-capy-muted">No holdings linked yet</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                  <TableHead className="text-right">Gain</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {holdings.map((h) => (
-                  <TableRow key={`${h.account_id}-${h.security_id}`}>
-                    <TableCell>{h.ticker_symbol || h.security_name || '—'}</TableCell>
-                    <TableCell className="text-right">
-                      {h.quantity != null ? Number(h.quantity).toFixed(2) : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">{formatMoney(h.market_value)}</TableCell>
-                    <TableCell className="text-right">
-                      {h.unrealized_gain != null ? (
-                        <span className={h.unrealized_gain >= 0 ? 'text-capy-primary' : 'text-destructive'}>
-                          {formatMoney(h.unrealized_gain)}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <HoldingsGrid holdings={holdings} />
           )}
         </CardContent>
       </Card>

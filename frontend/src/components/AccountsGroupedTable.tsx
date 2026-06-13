@@ -7,10 +7,8 @@ import {
 } from '@/lib/accountGroups';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataGridSectionRow, gridCols } from '@/components/ui/data-grid';
 import { cn, formatMoney } from '@/lib/utils';
-
-const ACCOUNT_GRID_COLS =
-  'grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(6.5rem,auto)_minmax(7.5rem,auto)]';
 
 interface AccountsGroupedTableProps {
   sections: AccountSectionData[];
@@ -25,10 +23,9 @@ export function AccountsGroupedTable({ sections }: AccountsGroupedTableProps) {
         <CardTitle>Accounts by category</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        {/* Shared column headers — grid keeps widths aligned across all sections */}
         <div
           className={cn(
-            ACCOUNT_GRID_COLS,
+            gridCols('accounts'),
             'border-b px-4 py-3 text-xs font-medium uppercase tracking-wide text-capy-muted',
           )}
         >
@@ -51,17 +48,12 @@ function SectionBlock({ section }: { section: AccountSectionData }) {
 
   return (
     <div className="border-b last:border-b-0">
-      <div
-        className={cn(
-          ACCOUNT_GRID_COLS,
-          'items-center bg-muted/40 px-4 py-2.5 text-sm font-semibold',
-        )}
-      >
-        <div className="col-span-3">{section.title}</div>
-        <div className={cn('text-right', isCredit && 'text-destructive')}>
-          {formatSectionSubtotal(section.key, section.subtotal)}
-        </div>
-      </div>
+      <DataGridSectionRow
+        template="accounts"
+        label={section.title}
+        value={formatSectionSubtotal(section.key, section.subtotal)}
+        valueClassName={isCredit ? 'text-destructive' : undefined}
+      />
 
       {section.accounts.map((acc) => (
         <AccountGridRow key={acc.account_id} account={acc} isCredit={isCredit} />
@@ -74,8 +66,8 @@ function AccountGridRow({ account, isCredit }: { account: PlaidAccount; isCredit
   return (
     <div
       className={cn(
-        ACCOUNT_GRID_COLS,
-        'items-center border-t border-border/60 px-4 py-3 text-sm transition-colors hover:bg-muted/30',
+        gridCols('accounts'),
+        'grid items-center border-t border-border/60 px-4 py-3 text-sm transition-colors hover:bg-muted/30',
       )}
     >
       <div className="min-w-0 truncate">

@@ -1,12 +1,5 @@
 import { CategoryChart, getCategoryColor } from '@/components/charts/CategoryChart';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataGrid } from '@/components/ui/data-grid';
 import { formatCategory, formatMoney, formatMonthLabel } from '@/lib/utils';
 
 interface CategoryPoint {
@@ -35,34 +28,40 @@ export function CategoryBreakdown({ data, month }: CategoryBreakdownProps) {
   return (
     <div className="space-y-6">
       <CategoryChart data={data} />
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Category</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="text-right">% of month</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((row, i) => (
-            <TableRow key={row.category}>
-              <TableCell>
-                <span className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: getCategoryColor(i) }}
-                  />
-                  {formatCategory(row.category)}
-                </span>
-              </TableCell>
-              <TableCell className="text-right">{formatMoney(row.amount)}</TableCell>
-              <TableCell className="text-right text-capy-muted">
-                {total > 0 ? `${((row.amount / total) * 100).toFixed(1)}%` : '—'}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataGrid
+        template="category"
+        rows={data}
+        getRowKey={(row) => row.category}
+        columns={[
+          {
+            key: 'category',
+            header: 'Category',
+            render: (row, i) => (
+              <span className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: getCategoryColor(i) }}
+                />
+                {formatCategory(row.category)}
+              </span>
+            ),
+          },
+          {
+            key: 'amount',
+            header: 'Amount',
+            align: 'right',
+            render: (row) => formatMoney(row.amount),
+          },
+          {
+            key: 'percent',
+            header: '% of month',
+            align: 'right',
+            className: 'text-capy-muted',
+            render: (row) =>
+              total > 0 ? `${((row.amount / total) * 100).toFixed(1)}%` : '—',
+          },
+        ]}
+      />
     </div>
   );
 }

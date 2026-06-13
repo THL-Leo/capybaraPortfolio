@@ -3,20 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet } from '@/api/client';
 import type { Holding, PlaidAccount, Transaction } from '@/api/types';
 import { CategoryBreakdown } from '@/components/CategoryBreakdown';
+import { HoldingsGrid } from '@/components/HoldingsGrid';
 import { MoMBadge } from '@/components/MoMBadge';
 import { MonthNavigator } from '@/components/MonthNavigator';
+import { TransactionsGrid } from '@/components/TransactionsGrid';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   bucketLabel,
   isCashBucket,
@@ -26,7 +20,6 @@ import {
 import {
   addMonths,
   currentMonth,
-  formatCategory,
   formatMoney,
   formatMonthLabel,
 } from '@/lib/utils';
@@ -167,10 +160,7 @@ export default function AccountDetail() {
               <CardTitle>Spending by category</CardTitle>
             </CardHeader>
             <CardContent>
-              <CategoryBreakdown
-                data={spending?.by_category ?? []}
-                month={month}
-              />
+              <CategoryBreakdown data={spending?.by_category ?? []} month={month} />
             </CardContent>
           </Card>
         </>
@@ -186,40 +176,7 @@ export default function AccountDetail() {
             {holdings.length === 0 ? (
               <p className="p-6 text-sm text-capy-muted">No holdings in this account</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead className="text-right">Gain</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {holdings.map((h) => (
-                    <TableRow key={`${h.account_id}-${h.security_id}`}>
-                      <TableCell>{h.ticker_symbol || h.security_name || '—'}</TableCell>
-                      <TableCell className="text-right">
-                        {h.quantity != null ? Number(h.quantity).toFixed(2) : '—'}
-                      </TableCell>
-                      <TableCell className="text-right">{formatMoney(h.market_value)}</TableCell>
-                      <TableCell className="text-right">
-                        {h.unrealized_gain != null ? (
-                          <span
-                            className={
-                              h.unrealized_gain >= 0 ? 'text-capy-primary' : 'text-destructive'
-                            }
-                          >
-                            {formatMoney(h.unrealized_gain)}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <HoldingsGrid holdings={holdings} emptyMessage="No holdings in this account" />
             )}
           </CardContent>
         </Card>
@@ -233,36 +190,14 @@ export default function AccountDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {transactions.length === 0 ? (
-              <p className="p-6 text-sm text-capy-muted">
-                {isCredit
+            <TransactionsGrid
+              transactions={transactions}
+              emptyMessage={
+                isCredit
                   ? `No transactions in ${formatMonthLabel(month)}.`
-                  : 'No transactions for this account.'}
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.transaction_id}>
-                      <TableCell>{tx.transaction_date}</TableCell>
-                      <TableCell>{tx.merchant_name || tx.name || '—'}</TableCell>
-                      <TableCell className="text-capy-muted">
-                        {tx.category_primary ? formatCategory(tx.category_primary) : '—'}
-                      </TableCell>
-                      <TableCell className="text-right">{formatMoney(tx.amount)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                  : 'No transactions for this account.'
+              }
+            />
           </CardContent>
         </Card>
       )}
