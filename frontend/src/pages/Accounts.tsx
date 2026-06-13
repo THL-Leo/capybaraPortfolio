@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { usePlaidLink } from 'react-plaid-link';
 import { apiDelete, apiPost } from '@/api/client';
 import { useAccounts } from '@/hooks/useAccounts';
+import { AccountsGroupedTable } from '@/components/AccountsGroupedTable';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { groupAccountsBySection } from '@/lib/accountGroups';
 import { formatMoney } from '@/lib/utils';
 
 export default function Accounts() {
@@ -101,6 +102,7 @@ export default function Accounts() {
   const items = data?.items ?? [];
   const accounts = data?.accounts ?? [];
   const holdings = data?.holdings_analytics ?? [];
+  const sections = groupAccountsBySection(accounts);
 
   return (
     <div className="space-y-6">
@@ -132,7 +134,10 @@ export default function Accounts() {
           ) : (
             <ul className="space-y-3">
               {items.map((item) => (
-                <li key={item.item_id} className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 last:border-0">
+                <li
+                  key={item.item_id}
+                  className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 last:border-0"
+                >
                   <div>
                     <p className="font-medium">{item.institution_name || item.item_id}</p>
                     <p className="text-xs text-capy-muted">
@@ -163,39 +168,15 @@ export default function Accounts() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Accounts</CardTitle>
-          <Badge>{accounts.length}</Badge>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.map((acc) => (
-                <TableRow key={acc.account_id}>
-                  <TableCell>
-                    <Link to={`/accounts/${acc.account_id}`} className="text-capy-primary hover:underline">
-                      {acc.name}
-                      {acc.mask && <span className="text-capy-muted"> ···{acc.mask}</span>}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="capitalize text-capy-muted">
-                    {acc.subtype || acc.type}
-                  </TableCell>
-                  <TableCell className="text-right">{formatMoney(acc.current_balance)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {sections.length === 0 ? (
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-sm text-capy-muted">No accounts synced yet.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <AccountsGroupedTable sections={sections} />
+      )}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">

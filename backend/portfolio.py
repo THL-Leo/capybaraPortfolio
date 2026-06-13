@@ -67,6 +67,38 @@ def get_plaid_accounts(db, user_id: int) -> list:
     return [dict(r) for r in rows]
 
 
+BUCKET_SORT_ORDER = {
+    'checking': 0,
+    'savings': 1,
+    'hysa': 2,
+    'brokerage': 3,
+    'retirement_401k': 4,
+    'retirement_roth': 5,
+    'liability': 6,
+}
+
+
+def enrich_accounts(accounts: list, items: list) -> list:
+    """Attach bucket and institution_name; sort by bucket, institution, name."""
+    inst_by_item = {i['item_id']: i.get('institution_name') or 'Unknown' for i in items}
+    enriched = []
+    for acc in accounts:
+        row = dict(acc)
+        row['bucket'] = classify_account(row)
+        row['institution_name'] = inst_by_item.get(row.get('item_id'), 'Unknown')
+        enriched.append(row)
+
+    def sort_key(a):
+        return (
+            BUCKET_SORT_ORDER.get(a.get('bucket'), 99),
+            (a.get('institution_name') or '').lower(),
+            (a.get('name') or '').lower(),
+        )
+
+    enriched.sort(key=sort_key)
+    return enriched
+
+
 def get_plaid_holdings(db, user_id: int) -> list:
     rows = db.execute(
         '''
@@ -96,7 +128,11 @@ def get_account_with_institution(db, user_id: int, account_id: str) -> dict | No
         ''',
         (user_id, account_id),
     ).fetchone()
-    return dict(row) if row else None
+    if row:
+        result = dict(row)
+        result['bucket'] = classify_account(result)
+        return result
+    return None
 
 
 def get_card_transactions(

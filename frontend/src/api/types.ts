@@ -44,6 +44,15 @@ export interface PlaidItem {
   created_at?: string;
 }
 
+export type AccountBucket =
+  | 'checking'
+  | 'savings'
+  | 'hysa'
+  | 'brokerage'
+  | 'retirement_401k'
+  | 'retirement_roth'
+  | 'liability';
+
 export interface PlaidAccount {
   account_id: string;
   item_id: string;
@@ -58,6 +67,7 @@ export interface PlaidAccount {
   last_synced_at?: string;
   institution_name?: string;
   institution_id?: string;
+  bucket?: AccountBucket;
 }
 
 export interface Holding {
@@ -146,4 +156,14 @@ export interface SpendingAnalyticsResponse {
   by_category: SpendingCategory[];
   by_week: SpendingWeek[];
   budgets: BudgetRow[];
+}
+
+export interface MonthlySpendingTotal {
+  month: string;
+  month_label: string;
+  total: number;
+}
+
+export interface MonthlyTotalsResponse {
+  months: MonthlySpendingTotal[];
 }

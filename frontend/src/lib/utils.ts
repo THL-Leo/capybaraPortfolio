@@ -26,4 +26,25 @@ export const BUCKET_LABELS: Record<string, string> = {
   brokerage: 'Brokerage',
   retirement_401k: '401(k)',
   retirement_roth: 'Roth IRA',
+  liability: 'Credit Card',
 };
+
+export function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function addMonths(ym: string, n: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+export function isCurrentMonth(ym: string): boolean {
+  return ym === currentMonth();
+}

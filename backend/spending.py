@@ -202,3 +202,32 @@ def get_budget_vs_actual(
             })
 
     return sorted(results, key=lambda x: x['actual'], reverse=True)
+
+
+def get_monthly_spending_totals(db, user_id: int, months: int = 12) -> list:
+    """Total credit-card spend per calendar month, most recent first."""
+    rows = db.execute(
+        '''
+        SELECT substr(transaction_date, 1, 7) AS month,
+               COALESCE(SUM(amount), 0) AS total
+        FROM plaid_card_transactions
+        WHERE user_id = ? AND pending = 0 AND amount > 0
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT ?
+        ''',
+        (user_id, months),
+    ).fetchall()
+
+    results = []
+    for month_str, total in rows:
+        try:
+            label = datetime.strptime(month_str, '%Y-%m').strftime('%B %Y')
+        except ValueError:
+            label = month_str
+        results.append({
+            'month': month_str,
+            'month_label': label,
+            'total': round(float(total), 2),
+        })
+    return results

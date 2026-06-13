@@ -77,8 +77,8 @@ Snapshots store a JSON `breakdown` column with per-bucket values.
 |--------|------|----------|
 | GET | `/net-worth` | `{ breakdown, assets_total, liabilities_total, total, ... }` |
 | GET | `/net-worth-over-time` | `{ snapshots: [{ date, total, breakdown, ... }] }` |
-| GET | `/accounts` | `{ accounts, holdings, allocation, ... }` |
-| GET | `/accounts/:id` | `{ account }` |
+| GET | `/accounts` | `{ accounts[] with bucket + institution_name, holdings, allocation, ... }` |
+| GET | `/accounts/:id` | `{ account }` — includes `bucket` |
 | GET | `/portfolio/holdings-analytics` | `{ holdings }` |
 | GET | `/portfolio/allocation` | `{ total, slices }` |
 
@@ -86,7 +86,8 @@ Snapshots store a JSON `breakdown` column with per-bucket values.
 
 | Method | Path | Response |
 |--------|------|----------|
-| GET | `/spending/analytics` | `{ spending_summary, by_category, by_week, budgets }` |
+| GET | `/spending/analytics` | `{ spending_summary, by_category, by_week, budgets }` — `?month=YYYY-MM` |
+| GET | `/spending/monthly-totals` | `{ months: [{ month, month_label, total }] }` — `?months=12` |
 | GET/POST | `/spending/budgets` | `{ budgets }` |
 | DELETE | `/spending/budgets/:id` | `{ message }` |
 | GET | `/accounts/:id/spending` | `{ summary, by_category, by_week, budgets }` |

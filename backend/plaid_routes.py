@@ -11,6 +11,7 @@ from plaid_sync import sync_all_items_for_user, sync_item_for_user
 from portfolio import (
     compute_net_worth_from_plaid,
     compute_spending_summary,
+    enrich_accounts,
     get_account_with_institution,
     get_allocation,
     get_card_transactions,
@@ -27,6 +28,7 @@ from spending import (
     delete_budget,
     get_budget_vs_actual,
     get_budgets,
+    get_monthly_spending_totals,
     get_spending_by_category,
     get_spending_by_week,
     upsert_budget,
@@ -173,10 +175,11 @@ def accounts():
     user_id = int(get_jwt_identity())
     db = get_db()
     month = request.args.get('month')
+    items = get_plaid_items(db, user_id)
     card_transactions = get_card_transactions(db, user_id)
     return jsonify({
-        'items': get_plaid_items(db, user_id),
-        'accounts': get_plaid_accounts(db, user_id),
+        'items': items,
+        'accounts': enrich_accounts(get_plaid_accounts(db, user_id), items),
         'holdings': get_plaid_holdings(db, user_id),
         'holdings_analytics': get_holdings_with_pnl(db, user_id),
         'allocation': get_allocation(db, user_id),
@@ -248,10 +251,23 @@ def spending_analytics():
     db = get_db()
     month = request.args.get('month')
     return jsonify({
-        'spending_summary': compute_spending_summary(db, user_id),
+        'spending_summary': compute_spending_summary(db, user_id, month=month),
         'by_category': get_spending_by_category(db, user_id, month),
         'by_week': get_spending_by_week(db, user_id),
         'budgets': get_budget_vs_actual(db, user_id, month),
+    }), 200
+
+
+@plaid_bp.route('/spending/monthly-totals', methods=['GET'])
+@jwt_required()
+def spending_monthly_totals():
+    user_id = int(get_jwt_identity())
+    try:
+        months = min(int(request.args.get('months', 12)), 24)
+    except (TypeError, ValueError):
+        months = 12
+    return jsonify({
+        'months': get_monthly_spending_totals(get_db(), user_id, months),
     }), 200
 
 

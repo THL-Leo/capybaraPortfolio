@@ -17,9 +17,9 @@ Vite + React 19 + TypeScript dashboard for net worth and spending.
 | Route | Page | API calls |
 |-------|------|-----------|
 | `/` | Overview | `GET /home`, `/net-worth`, `/net-worth-over-time` |
-| `/accounts` | Accounts | `GET /accounts`, `/portfolio/holdings-analytics`, `/portfolio/allocation`; Plaid link/sync/delete |
-| `/spending` | Spending | `GET /spending/analytics`; budgets CRUD |
-| `/accounts/:id` | Account detail | `GET /accounts/:id`, `/accounts/:id/spending`, `/accounts/:id/transactions` |
+| `/accounts` | Accounts | `GET /accounts` (grouped Cash / Investments / Credit Cards); Plaid link/sync/delete |
+| `/spending` | Spending | `GET /spending/analytics?month=`, `/spending/monthly-totals`; budgets CRUD |
+| `/accounts/:id` | Account detail | Credit: month nav, categories, MoM, transactions. Investment: holdings. Cash: balance + transactions |
 | `/login` | Login | `POST /login` |
 | `/register` | Register | `POST /register` |
 
@@ -34,11 +34,13 @@ src/
 ├── api/client.ts, types.ts
 ├── context/AuthContext.tsx
 ├── hooks/useNetWorth.ts, useAccounts.ts, useSpending.ts
+├── components/MonthNavigator.tsx, CategoryBreakdown.tsx, AccountSection.tsx, MoMBadge.tsx
 ├── components/layout/     AppShell, Nav, ProtectedRoute
 ├── components/charts/     NetWorthChart, CategoryChart
 ├── components/ui/         shadcn components
+├── lib/accountGroups.ts   account section grouping
 ├── pages/                 Overview, Accounts, Spending, AccountDetail, Login, Register
-├── lib/utils.ts           formatMoney, formatCategory
+├── lib/utils.ts           formatMoney, month helpers, bucket labels
 └── App.tsx
 ```
 
