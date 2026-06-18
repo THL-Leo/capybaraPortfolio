@@ -7,6 +7,7 @@ const links = [
   { to: '/', label: 'Overview', end: true },
   { to: '/accounts', label: 'Accounts' },
   { to: '/spending', label: 'Spending' },
+  { to: '/tracker', label: 'Tracker' },
 ];
 
 export function Nav() {

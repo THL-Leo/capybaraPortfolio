@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import Overview from '@/pages/Overview';
 import Accounts from '@/pages/Accounts';
 import Spending from '@/pages/Spending';
+import Tracker from '@/pages/Tracker';
 import AccountDetail from '@/pages/AccountDetail';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="accounts" element={<Accounts />} />
             <Route path="accounts/:id" element={<AccountDetail />} />
             <Route path="spending" element={<Spending />} />
+            <Route path="tracker" element={<Tracker />} />
           </Route>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

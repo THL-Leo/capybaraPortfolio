@@ -157,3 +157,42 @@ export interface MonthlySpendingTotal {
 export interface MonthlyTotalsResponse {
   months: MonthlySpendingTotal[];
 }
+
+export interface TrackerList {
+  id: number;
+  name: string;
+  stock_count?: number;
+  created_at?: string;
+}
+
+export interface IntradayPoint {
+  at: string;
+  price: number;
+}
+
+export interface TrackedStock {
+  ticker: string;
+  name: string;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
+  intraday?: IntradayPoint[];
+}
+
+export interface SearchResult {
+  symbol: string;
+  name: string;
+  exchange?: string;
+}
+
+export interface TrackerListsResponse {
+  lists: TrackerList[];
+}
+
+export interface TrackerStocksResponse {
+  stocks: TrackedStock[];
+}
+
+export interface TrackerSearchResponse {
+  results: SearchResult[];
+}

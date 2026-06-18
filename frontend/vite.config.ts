@@ -18,10 +18,11 @@ const apiPaths = [
   '/plaid',
   '/spending',
   '/portfolio',
+  '/tracker',
 ];
 
 /** React Router paths that overlap with API prefixes above. */
-const spaPaths = new Set(['/accounts', '/spending', '/login', '/register']);
+const spaPaths = new Set(['/accounts', '/spending', '/tracker', '/login', '/register']);
 
 function apiProxy(): ProxyOptions {
   return {
