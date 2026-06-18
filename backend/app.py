@@ -17,6 +17,7 @@ from flask_jwt_extended import (
 from db import get_db
 from init_db import init_db
 from plaid_routes import plaid_bp
+from tracker_routes import tracker_bp
 from portfolio import compute_net_worth_from_plaid, get_plaid_items, user_has_plaid_items
 
 load_dotenv()
@@ -25,6 +26,7 @@ init_db()
 
 app = Flask(__name__)
 app.register_blueprint(plaid_bp)
+app.register_blueprint(tracker_bp)
 
 app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)

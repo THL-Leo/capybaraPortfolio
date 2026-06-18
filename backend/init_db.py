@@ -92,6 +92,27 @@ CREATE TABLE IF NOT EXISTS plaid_card_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_plaid_card_tx_user_date ON plaid_card_transactions(user_id, transaction_date);
 CREATE INDEX IF NOT EXISTS idx_plaid_card_tx_account ON plaid_card_transactions(account_id);
+
+CREATE TABLE IF NOT EXISTS tracker_lists (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS tracker_stocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    list_id INTEGER NOT NULL,
+    ticker TEXT NOT NULL,
+    added_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(list_id, ticker),
+    FOREIGN KEY (list_id) REFERENCES tracker_lists(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_tracker_lists_user ON tracker_lists(user_id);
+CREATE INDEX IF NOT EXISTS idx_tracker_stocks_list ON tracker_stocks(list_id);
 """
 
 
@@ -113,6 +134,15 @@ def run_migrations(conn):
         conn.execute('ALTER TABLE net_worth_snapshots ADD COLUMN assets_total REAL')
     if 'liabilities_total' not in nw_cols:
         conn.execute('ALTER TABLE net_worth_snapshots ADD COLUMN liabilities_total REAL')
+
+    tracker_cols = {r[1] for r in conn.execute('PRAGMA table_info(tracker_lists)').fetchall()}
+    if tracker_cols:
+        if 'deleted_at' not in tracker_cols:
+            conn.execute('ALTER TABLE tracker_lists ADD COLUMN deleted_at TEXT')
+        conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_tracker_lists_user_active '
+            'ON tracker_lists(user_id) WHERE deleted_at IS NULL'
+        )
 
 
 def init_db(verbose=False):
