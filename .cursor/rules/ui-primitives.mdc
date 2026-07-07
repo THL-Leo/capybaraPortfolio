@@ -1,0 +1,13 @@
+---
+description: UI primitive component standards (shadcn-style)
+globs: frontend/src/components/ui/**/*
+alwaysApply: false
+---
+
+# UI Primitives
+
+Read `frontend/src/components/ui/AGENTS.md` before editing or adding primitives.
+
+Required pattern: `import * as React`, `forwardRef`, `displayName`, exported `FooProps`, `cn()` for classes, CVA for variants.
+
+Do not add API calls, hooks, or domain types to `ui/` files.

@@ -1,0 +1,15 @@
+---
+description: Frontend conventions for the Capybara Portfolio React app
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Frontend
+
+Read `frontend/AGENTS.md` before editing the frontend.
+
+- Stack: React 19, Vite, Tailwind, shadcn-style primitives in `src/components/ui/`
+- Use semantic tokens (`bg-background`, `text-muted-foreground`) not hex or `capy-*`
+- Pages use `PageHeader`; spacing `space-y-8`
+- UI primitives: follow `frontend/src/components/ui/AGENTS.md` (forwardRef, displayName, FooProps, cn())
+- Domain components: `frontend/src/components/AGENTS.md` — never put DataGrid or app logic in `ui/`
