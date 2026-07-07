@@ -7,8 +7,10 @@ export function useAccounts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setError('');
     try {
       const res = await apiGet<AccountsResponse>('/accounts');
@@ -16,7 +18,9 @@ export function useAccounts() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load accounts');
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   }, []);
 

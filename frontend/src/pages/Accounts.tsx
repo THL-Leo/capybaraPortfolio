@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { apiDelete, apiPost } from '@/api/client';
 import { useAccounts } from '@/hooks/useAccounts';
+import { notifyPortfolioSynced } from '@/hooks/useNetWorth';
 import { AccountsGroupedTable } from '@/components/AccountsGroupedTable';
 import { HoldingsGrid } from '@/components/HoldingsGrid';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -66,10 +67,17 @@ export default function Accounts() {
   const handleSync = async () => {
     setSyncing(true);
     setLocalError('');
+    setMessage('');
     try {
-      await apiPost('/plaid/sync');
-      setMessage('Sync complete');
-      refresh();
+      const res = await apiPost<{ results: { ok: boolean; error?: string }[] }>('/plaid/sync');
+      const failed = res.results?.filter((r) => !r.ok) ?? [];
+      if (failed.length) {
+        setLocalError(failed.map((r) => r.error ?? 'Sync failed').join('; '));
+      } else {
+        setMessage('Sync complete');
+      }
+      notifyPortfolioSynced();
+      await refresh({ silent: true });
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Sync failed');
     } finally {
