@@ -37,7 +37,7 @@ Legacy tables (`transactions`, `price_cache`) are no longer created for new data
 | `investment` (else) | `brokerage` |
 | `credit` | `liability` |
 
-Holdings are summed into the bucket of their parent account.
+For investment accounts, use the sum of holdings when positions are synced; otherwise use the account balance. Depository accounts use balance only. Holdings are never added on top of an investment account balance (avoids double-counting).
 
 ## Net worth formula
 

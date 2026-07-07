@@ -18,6 +18,7 @@ from portfolio import (
     get_credit_accounts,
     get_holdings_with_pnl,
     get_net_worth_snapshots,
+    get_net_worth_snapshots_for_chart,
     get_plaid_accounts,
     get_plaid_holdings,
     get_plaid_items,
@@ -310,10 +311,10 @@ def net_worth_over_time():
             'snapshots': [],
         }), 200
     try:
-        snapshots = get_net_worth_snapshots(db, user_id)
+        snapshots = get_net_worth_snapshots_for_chart(db, user_id)
         if not snapshots:
             record_net_worth_snapshot(db, user_id)
-            snapshots = get_net_worth_snapshots(db, user_id)
+            snapshots = get_net_worth_snapshots_for_chart(db, user_id)
     except Exception as e:
         return jsonify({
             'source': 'plaid',

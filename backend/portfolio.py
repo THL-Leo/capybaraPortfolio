@@ -222,9 +222,21 @@ def _holding_value(h: dict) -> float:
     return 0.0
 
 
+def _holdings_total_by_account(holdings: list) -> dict[str, float]:
+    """Sum institution value per investment account."""
+    totals: dict[str, float] = {}
+    for h in holdings:
+        account_id = h.get('account_id')
+        if not account_id:
+            continue
+        totals[account_id] = totals.get(account_id, 0.0) + _holding_value(h)
+    return totals
+
+
 def compute_net_worth_from_plaid(db, user_id: int) -> dict:
     accounts = get_plaid_accounts(db, user_id)
     holdings = get_plaid_holdings(db, user_id)
+    holdings_by_account = _holdings_total_by_account(holdings)
 
     breakdown = _empty_breakdown()
     liabilities_total = 0.0
@@ -243,15 +255,17 @@ def compute_net_worth_from_plaid(db, user_id: int) -> dict:
         if acc['type'] == 'depository':
             breakdown[bucket] = breakdown.get(bucket, 0.0) + bal
             cash_accounts.append({**acc, 'balance': bal, 'bucket': bucket})
-        elif acc['type'] == 'investment' and bal > 0:
-            breakdown[bucket] = breakdown.get(bucket, 0.0) + bal
+        elif acc['type'] == 'investment':
+            # Plaid account balance already reflects total market value when
+            # holdings exist — use holdings sum only, else fall back to balance.
+            if acc['account_id'] not in holdings_by_account and bal > 0:
+                breakdown[bucket] = breakdown.get(bucket, 0.0) + bal
 
-    for h in holdings:
-        bucket = account_bucket.get(h['account_id'], 'brokerage')
+    for account_id, holding_total in holdings_by_account.items():
+        bucket = account_bucket.get(account_id, 'brokerage')
         if bucket == 'liability':
             continue
-        val = _holding_value(h)
-        breakdown[bucket] = breakdown.get(bucket, 0.0) + val
+        breakdown[bucket] = breakdown.get(bucket, 0.0) + holding_total
 
     for key in breakdown:
         breakdown[key] = round(breakdown[key], 2)
@@ -378,6 +392,33 @@ def get_net_worth_snapshots(db, user_id: int) -> list:
             'breakdown': breakdown,
             'source': r['source'],
         })
+    return snapshots
+
+
+def get_net_worth_snapshots_for_chart(db, user_id: int) -> list:
+    """Return stored snapshots with today's point replaced by live Plaid totals."""
+    snapshots = get_net_worth_snapshots(db, user_id)
+    if not user_has_plaid_items(db, user_id):
+        return snapshots
+
+    nw = compute_net_worth_from_plaid(db, user_id)
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    live_point = {
+        'date': today,
+        'total': nw['total'],
+        'cash_total': nw['cash_total'],
+        'investments_total': nw['investments_total'],
+        'assets_total': nw['assets_total'],
+        'liabilities_total': nw['liabilities_total'],
+        'breakdown': nw['breakdown'],
+        'source': nw['source'],
+    }
+
+    if snapshots and snapshots[-1]['date'] == today:
+        snapshots[-1] = live_point
+    else:
+        snapshots.append(live_point)
+
     return snapshots
 
 
