@@ -7,7 +7,7 @@ import {
 } from '@/lib/accountGroups';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataGridSectionRow, gridCols } from '@/components/ui/data-grid';
+import { DataGridSectionRow, gridCols } from '@/components/data-grid/data-grid';
 import { cn, formatMoney } from '@/lib/utils';
 
 interface AccountsGroupedTableProps {

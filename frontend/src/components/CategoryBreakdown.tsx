@@ -1,5 +1,5 @@
 import { CategoryChart, getCategoryColor } from '@/components/charts/CategoryChart';
-import { DataGrid } from '@/components/ui/data-grid';
+import { DataGrid } from '@/components/data-grid/data-grid';
 import { formatCategory, formatMoney, formatMonthLabel } from '@/lib/utils';
 
 interface CategoryPoint {

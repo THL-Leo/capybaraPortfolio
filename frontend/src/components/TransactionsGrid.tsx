@@ -1,5 +1,5 @@
 import type { Transaction } from '@/api/types';
-import { DataGrid } from '@/components/ui/data-grid';
+import { DataGrid } from '@/components/data-grid/data-grid';
 import { formatCategory, formatMoney } from '@/lib/utils';
 
 interface TransactionsGridProps {

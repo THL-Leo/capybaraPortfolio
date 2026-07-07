@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { useSpending } from '@/hooks/useSpending';
 import { Alert } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataGrid } from '@/components/ui/data-grid';
+import { DataGrid } from '@/components/data-grid/data-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, currentMonth, formatMoney } from '@/lib/utils';
 

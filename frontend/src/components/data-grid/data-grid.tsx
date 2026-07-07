@@ -112,18 +112,20 @@ export function DataGrid<T>({
   );
 }
 
+export interface DataGridSectionRowProps {
+  template: GridTemplate;
+  label: ReactNode;
+  value?: ReactNode;
+  valueClassName?: string;
+}
+
 /** Section divider row (e.g. Cash / Investments headers) */
 export function DataGridSectionRow({
   template,
   label,
   value,
   valueClassName,
-}: {
-  template: GridTemplate;
-  label: ReactNode;
-  value?: ReactNode;
-  valueClassName?: string;
-}) {
+}: DataGridSectionRowProps) {
   const labelSpan = value !== undefined ? 'col-span-3' : 'col-span-full';
 
   return (
