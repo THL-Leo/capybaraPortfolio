@@ -1,19 +1,16 @@
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   /** When true (default), shows an indeterminate sliding bar for loading states. */
   indeterminate?: boolean;
   value?: number;
 }
 
-export function Progress({
-  className,
-  indeterminate = true,
-  value = 0,
-  ...props
-}: ProgressProps) {
-  return (
+const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
+  ({ className, indeterminate = true, value = 0, ...props }, ref) => (
     <div
+      ref={ref}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
@@ -30,5 +27,8 @@ export function Progress({
         />
       )}
     </div>
-  );
-}
+  ),
+);
+Progress.displayName = 'Progress';
+
+export { Progress };
