@@ -17,7 +17,7 @@ export function CategoryBreakdown({ data, month }: CategoryBreakdownProps) {
 
   if (!data.length) {
     return (
-      <p className="py-8 text-center text-sm text-capy-muted">
+      <p className="py-10 text-center text-sm text-muted-foreground">
         {month
           ? `No spending in ${formatMonthLabel(month)}. Try a previous month.`
           : 'No spending data for this period.'}
@@ -56,7 +56,7 @@ export function CategoryBreakdown({ data, month }: CategoryBreakdownProps) {
             key: 'percent',
             header: '% of month',
             align: 'right',
-            className: 'text-capy-muted',
+            className: 'text-muted-foreground',
             render: (row) =>
               total > 0 ? `${((row.amount / total) * 100).toFixed(1)}%` : '—',
           },

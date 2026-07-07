@@ -21,9 +21,9 @@ export function gridCols(template: GridTemplate): string {
 }
 
 const HEADER_ROW =
-  'border-b px-4 py-3 text-xs font-medium uppercase tracking-wide text-capy-muted';
+  'border-b border-border/60 px-4 py-3 text-xs font-medium text-muted-foreground';
 const BODY_ROW =
-  'grid items-center border-t border-border/60 px-4 py-3 text-sm transition-colors hover:bg-muted/30';
+  'grid items-center border-t border-border/40 px-4 py-3 text-sm transition-colors hover:bg-muted/50';
 
 export interface DataGridColumn<T> {
   key: string;
@@ -54,11 +54,13 @@ export function DataGrid<T>({
   emptyMessage,
 }: DataGridProps<T>) {
   if (!rows.length && emptyMessage) {
-    return <p className="px-4 py-8 text-center text-sm text-capy-muted">{emptyMessage}</p>;
+    return (
+      <p className="px-4 py-10 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+    );
   }
 
   return (
-    <div>
+    <div className="overflow-hidden rounded-lg">
       <div className={cn(gridCols(template), HEADER_ROW)}>
         {columns.map((col) => (
           <div
@@ -128,7 +130,7 @@ export function DataGridSectionRow({
     <div
       className={cn(
         gridCols(template),
-        'items-center border-b border-border/60 bg-muted/40 px-4 py-2.5 text-sm font-semibold',
+        'items-center border-b border-border/40 bg-muted/30 px-4 py-2.5 text-sm font-medium',
       )}
     >
       <div className={labelSpan}>{label}</div>

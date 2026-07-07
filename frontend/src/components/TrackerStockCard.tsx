@@ -19,18 +19,18 @@ export function TrackerStockCard({ stock, onRemove }: TrackerStockCardProps) {
   const positive = stock.change != null && stock.change >= 0;
   const negative = stock.change != null && stock.change < 0;
   const changeColor = positive
-    ? 'text-capy-primary'
+    ? 'text-positive'
     : negative
       ? 'text-destructive'
-      : 'text-capy-muted';
+      : 'text-muted-foreground';
 
   return (
     <Card className="relative">
       <Button
         type="button"
         variant="ghost"
-        size="sm"
-        className="absolute right-0.5 top-0.5 z-10 h-7 w-7 p-0 text-capy-muted hover:text-destructive"
+        size="icon"
+        className="absolute right-1 top-1 z-10 h-7 w-7 text-muted-foreground hover:text-destructive"
         onClick={() => onRemove(stock.ticker)}
         aria-label={`Remove ${stock.ticker}`}
       >
@@ -38,12 +38,14 @@ export function TrackerStockCard({ stock, onRemove }: TrackerStockCardProps) {
       </Button>
       <CardContent className="flex flex-col gap-2 p-4 pb-4 pt-7">
         <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 pr-6">
-          <p className="truncate text-lg font-semibold leading-tight">{stock.ticker}</p>
-          <p className="text-right text-lg font-semibold leading-tight">
+          <p className="truncate text-base font-semibold leading-tight tracking-tight">
+            {stock.ticker}
+          </p>
+          <p className="text-right text-base font-semibold tabular-nums leading-tight">
             {stock.price != null ? formatMoney(stock.price) : '—'}
           </p>
-          <p className="truncate text-sm text-capy-muted">{stock.name}</p>
-          <p className={cn('text-right text-sm font-medium', changeColor)}>
+          <p className="truncate text-sm text-muted-foreground">{stock.name}</p>
+          <p className={cn('text-right text-sm font-medium tabular-nums', changeColor)}>
             {stock.change != null ? (
               <>
                 {stock.change >= 0 ? '+' : ''}

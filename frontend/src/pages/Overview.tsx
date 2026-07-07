@@ -3,6 +3,7 @@ import { apiGet } from '@/api/client';
 import type { HomeResponse } from '@/api/types';
 import { useNetWorth } from '@/hooks/useNetWorth';
 import { NetWorthChart } from '@/components/charts/NetWorthChart';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +20,9 @@ export default function Overview() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-8">
         <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-24 w-full" />
         <Skeleton className="h-40 w-full" />
       </div>
     );
@@ -30,44 +32,34 @@ export default function Overview() {
   const chartData = snapshots.map((s) => ({ date: s.date, value: s.total }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        {home && <p className="text-sm text-capy-muted">{home.message}</p>}
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Overview"
+        description={home?.message}
+      />
 
       {error && <Alert variant="destructive">{error}</Alert>}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-capy-muted">Net worth</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold">{formatMoney(current?.total ?? 0)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-capy-muted">Assets</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-capy-primary">
+      <section className="space-y-4">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Net worth</p>
+          <p className="metric-value mt-1">{formatMoney(current?.total ?? 0)}</p>
+        </div>
+        <div className="flex flex-wrap gap-8">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Assets</p>
+            <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
               {formatMoney(current?.assets_total ?? 0)}
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-capy-muted">Liabilities</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-capy-credit">
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Liabilities</p>
+            <p className="mt-0.5 text-lg font-semibold tabular-nums text-destructive">
               {formatMoney(current?.liabilities_total ?? 0)}
             </p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </section>
 
       {breakdown && (
         <Card>
@@ -75,11 +67,13 @@ export default function Overview() {
             <CardTitle>Bucket breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="divide-y divide-border/60">
               {Object.entries(breakdown).map(([key, val]) => (
-                <div key={key} className="flex justify-between rounded-lg border p-3">
-                  <span className="text-sm text-capy-muted">{BUCKET_LABELS[key] ?? key}</span>
-                  <span className="font-medium">{formatMoney(val)}</span>
+                <div key={key} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <span className="text-sm text-muted-foreground">
+                    {BUCKET_LABELS[key] ?? key}
+                  </span>
+                  <span className="text-sm font-medium tabular-nums">{formatMoney(val)}</span>
                 </div>
               ))}
             </div>

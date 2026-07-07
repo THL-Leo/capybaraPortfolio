@@ -107,20 +107,20 @@ export function TickerSearch({ onAdd, onSearch, disabled }: TickerSearchProps) {
           autoComplete="off"
         />
         {open && results.length > 0 && (
-          <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-md">
+          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md bg-card shadow-md ring-1 ring-black/5">
             {results.map((result, index) => (
               <button
                 key={result.symbol}
                 type="button"
                 className={cn(
-                  'flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-capy-primary/10',
-                  index === highlightIndex && 'bg-capy-primary/15',
+                  'flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/60',
+                  index === highlightIndex && 'bg-muted',
                 )}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => handleAdd(result.symbol)}
               >
                 <span className="font-medium">{result.symbol}</span>
-                <span className="ml-3 truncate text-capy-muted">{result.name}</span>
+                <span className="ml-3 truncate text-muted-foreground">{result.name}</span>
               </button>
             ))}
           </div>

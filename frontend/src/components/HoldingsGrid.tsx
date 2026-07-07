@@ -42,7 +42,7 @@ export function HoldingsGrid({
           render: (h) =>
             h.unrealized_gain != null ? (
               <span
-                className={h.unrealized_gain >= 0 ? 'text-capy-primary' : 'text-destructive'}
+                className={h.unrealized_gain >= 0 ? 'text-positive' : 'text-destructive'}
               >
                 {formatMoney(h.unrealized_gain)}
               </span>

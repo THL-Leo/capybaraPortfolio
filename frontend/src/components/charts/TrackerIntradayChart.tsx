@@ -8,6 +8,14 @@ import {
   YAxis,
 } from 'recharts';
 import type { IntradayPoint } from '@/api/types';
+import {
+  axisStroke,
+  axisTickStyle,
+  CHART_COLORS,
+  tooltipContentStyle,
+  tooltipItemStyle,
+  tooltipLabelStyle,
+} from '@/lib/chartTheme';
 import { formatMoney } from '@/lib/utils';
 
 interface TrackerIntradayChartProps {
@@ -81,41 +89,42 @@ export function TrackerIntradayChart({ data, positive, negative }: TrackerIntrad
 
   if (!chartData.length) {
     return (
-      <div className="flex h-36 items-center justify-center rounded-md bg-capy-bg/60 text-xs text-capy-muted">
+      <div className="flex h-36 items-center justify-center rounded-lg bg-muted/40 text-xs text-muted-foreground">
         No intraday data
       </div>
     );
   }
 
-  const stroke = positive ? '#5c7a4a' : negative ? '#dc2626' : '#6b6560';
+  const stroke = positive
+    ? CHART_COLORS.positive
+    : negative
+      ? CHART_COLORS.negative
+      : CHART_COLORS.neutral;
 
   return (
     <div className="h-36 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={chartData}
-          margin={{ top: 8, right: 8, left: 0, bottom: 16 }}
-        >
+        <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 16 }}>
           <XAxis
             dataKey="ts"
             type="number"
             domain={['dataMin', 'dataMax']}
             ticks={xTicks}
             tickFormatter={formatAxisTime}
-            tick={{ fontSize: 11, fill: '#6b6560' }}
-            stroke="#6b6560"
+            tick={{ ...axisTickStyle, fontSize: 11 }}
+            stroke={axisStroke}
             tickMargin={8}
-            axisLine={{ stroke: '#6b6560' }}
-            tickLine={{ stroke: '#6b6560' }}
+            axisLine={false}
+            tickLine={false}
           />
           <YAxis
             domain={['auto', 'auto']}
-            tick={{ fontSize: 11, fill: '#6b6560' }}
-            stroke="#6b6560"
+            tick={{ ...axisTickStyle, fontSize: 11 }}
+            stroke={axisStroke}
             width={48}
             tickMargin={4}
-            axisLine={{ stroke: '#6b6560' }}
-            tickLine={{ stroke: '#6b6560' }}
+            axisLine={false}
+            tickLine={false}
             tickFormatter={(value: number) => `$${value.toFixed(0)}`}
           />
           <Tooltip
@@ -124,13 +133,15 @@ export function TrackerIntradayChart({ data, positive, negative }: TrackerIntrad
               const ts = payload?.[0]?.payload?.ts as number | undefined;
               return ts ? formatTooltipTime(ts) : '';
             }}
-            contentStyle={{ fontSize: 12 }}
+            contentStyle={tooltipContentStyle}
+            labelStyle={tooltipLabelStyle}
+            itemStyle={tooltipItemStyle}
           />
           <Line
             type="monotone"
             dataKey="price"
             stroke={stroke}
-            strokeWidth={2}
+            strokeWidth={1.5}
             dot={false}
             activeDot={{ r: 3 }}
           />

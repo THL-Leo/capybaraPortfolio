@@ -4,6 +4,7 @@ import { apiDelete, apiPost } from '@/api/client';
 import { useAccounts } from '@/hooks/useAccounts';
 import { AccountsGroupedTable } from '@/components/AccountsGroupedTable';
 import { HoldingsGrid } from '@/components/HoldingsGrid';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,19 +98,19 @@ export default function Accounts() {
   const sections = groupAccountsBySection(accounts);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Accounts</h1>
-          <p className="text-sm text-capy-muted">Linked institutions, holdings, and balances</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleConnect}>Connect institution</Button>
-          <Button variant="outline" onClick={handleSync} disabled={syncing || !items.length}>
-            {syncing ? 'Syncing…' : 'Sync'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Accounts"
+        description="Linked institutions, holdings, and balances"
+        actions={
+          <>
+            <Button onClick={handleConnect}>Connect institution</Button>
+            <Button variant="outline" onClick={handleSync} disabled={syncing || !items.length}>
+              {syncing ? 'Syncing…' : 'Sync'}
+            </Button>
+          </>
+        }
+      />
 
       {(error || localError) && <Alert variant="destructive">{error || localError}</Alert>}
       {message && <Alert variant="success">{message}</Alert>}
@@ -120,19 +121,19 @@ export default function Accounts() {
         </CardHeader>
         <CardContent>
           {!items.length ? (
-            <p className="text-sm text-capy-muted">
+            <p className="text-sm text-muted-foreground">
               No institutions linked. Connect a bank or brokerage via Plaid Sandbox.
             </p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="divide-y divide-border/60">
               {items.map((item) => (
                 <li
                   key={item.item_id}
-                  className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 last:border-0"
+                  className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
                 >
                   <div>
                     <p className="font-medium">{item.institution_name || item.item_id}</p>
-                    <p className="text-xs text-capy-muted">
+                    <p className="text-xs text-muted-foreground">
                       {item.status}
                       {item.last_sync_at && ` · ${new Date(item.last_sync_at).toLocaleString()}`}
                     </p>
@@ -162,8 +163,8 @@ export default function Accounts() {
 
       {sections.length === 0 ? (
         <Card>
-          <CardContent className="py-8">
-            <p className="text-center text-sm text-capy-muted">No accounts synced yet.</p>
+          <CardContent className="py-10">
+            <p className="text-center text-sm text-muted-foreground">No accounts synced yet.</p>
           </CardContent>
         </Card>
       ) : (
@@ -175,9 +176,9 @@ export default function Accounts() {
           <CardTitle>Holdings</CardTitle>
           <Badge>{holdings.length} positions</Badge>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 pb-5">
           {holdings.length === 0 ? (
-            <p className="p-6 text-sm text-capy-muted">No holdings linked yet</p>
+            <p className="px-5 text-sm text-muted-foreground">No holdings linked yet</p>
           ) : (
             <HoldingsGrid holdings={holdings} />
           )}

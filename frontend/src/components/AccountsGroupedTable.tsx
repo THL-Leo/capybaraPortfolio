@@ -26,7 +26,7 @@ export function AccountsGroupedTable({ sections }: AccountsGroupedTableProps) {
         <div
           className={cn(
             gridCols('accounts'),
-            'border-b px-4 py-3 text-xs font-medium uppercase tracking-wide text-capy-muted',
+            'border-b border-border/60 px-4 py-3 text-xs font-medium text-muted-foreground',
           )}
         >
           <div>Account</div>
@@ -67,19 +67,19 @@ function AccountGridRow({ account, isCredit }: { account: PlaidAccount; isCredit
     <div
       className={cn(
         gridCols('accounts'),
-        'grid items-center border-t border-border/60 px-4 py-3 text-sm transition-colors hover:bg-muted/30',
+        'grid items-center border-t border-border/40 px-4 py-3 text-sm transition-colors hover:bg-muted/50',
       )}
     >
       <div className="min-w-0 truncate">
         <Link
           to={`/accounts/${account.account_id}`}
-          className="text-capy-primary hover:underline"
+          className="font-medium text-foreground hover:underline"
         >
           {account.name}
-          {account.mask && <span className="text-capy-muted"> ···{account.mask}</span>}
+          {account.mask && <span className="text-muted-foreground"> ···{account.mask}</span>}
         </Link>
       </div>
-      <div className="min-w-0 truncate text-capy-muted">{account.institution_name ?? '—'}</div>
+      <div className="min-w-0 truncate text-muted-foreground">{account.institution_name ?? '—'}</div>
       <div>
         <Badge>{bucketLabel(account.bucket)}</Badge>
       </div>

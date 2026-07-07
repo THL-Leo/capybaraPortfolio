@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiDelete, apiGet, apiPost } from '@/api/client';
 import type {
   SearchResult,
@@ -16,6 +16,7 @@ export function useTracker() {
   const [loading, setLoading] = useState(true);
   const [stocksLoading, setStocksLoading] = useState(false);
   const [error, setError] = useState('');
+  const latestStocksListIdRef = useRef<number | null>(null);
 
   const refreshLists = useCallback(async () => {
     setError('');
@@ -36,20 +37,26 @@ export function useTracker() {
 
   const refreshStocks = useCallback(async (listId: number | null) => {
     if (listId == null) {
+      latestStocksListIdRef.current = null;
       setStocks([]);
       return;
     }
 
+    latestStocksListIdRef.current = listId;
     setStocksLoading(true);
     setError('');
     try {
       const res = await apiGet<TrackerStocksResponse>(`/tracker/lists/${listId}/stocks`);
+      if (latestStocksListIdRef.current !== listId) return;
       setStocks(res.stocks ?? []);
     } catch (e) {
+      if (latestStocksListIdRef.current !== listId) return;
       setError(e instanceof Error ? e.message : 'Failed to load stocks');
       setStocks([]);
     } finally {
-      setStocksLoading(false);
+      if (latestStocksListIdRef.current === listId) {
+        setStocksLoading(false);
+      }
     }
   }, []);
 

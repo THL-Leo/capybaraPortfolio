@@ -1,4 +1,5 @@
 import {
+  CartesianGrid,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -6,6 +7,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import {
+  axisStroke,
+  axisTickStyle,
+  CHART_COLORS,
+  tooltipContentStyle,
+  tooltipItemStyle,
+  tooltipLabelStyle,
+} from '@/lib/chartTheme';
 import { formatMoney } from '@/lib/utils';
 
 interface Point {
@@ -15,7 +24,7 @@ interface Point {
 
 export function NetWorthChart({ data }: { data: Point[] }) {
   if (!data.length) {
-    return <p className="py-8 text-center text-sm text-capy-muted">No history yet</p>;
+    return <p className="py-10 text-center text-sm text-muted-foreground">No history yet</p>;
   }
 
   const chartData = data.map((d) => ({
@@ -27,21 +36,38 @@ export function NetWorthChart({ data }: { data: Point[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
+    <ResponsiveContainer width="100%" height={280}>
       <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#6b6560" />
+        <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
+        <XAxis
+          dataKey="label"
+          tick={axisTickStyle}
+          stroke={axisStroke}
+          axisLine={false}
+          tickLine={false}
+        />
         <YAxis
-          tick={{ fontSize: 12 }}
-          stroke="#6b6560"
+          tick={axisTickStyle}
+          stroke={axisStroke}
+          axisLine={false}
+          tickLine={false}
+          width={48}
           tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
         />
-        <Tooltip formatter={(v: number) => formatMoney(v)} labelFormatter={(l) => l} />
+        <Tooltip
+          formatter={(v: number) => [formatMoney(v), 'Net worth']}
+          labelFormatter={(l) => l}
+          contentStyle={tooltipContentStyle}
+          labelStyle={tooltipLabelStyle}
+          itemStyle={tooltipItemStyle}
+        />
         <Line
           type="monotone"
           dataKey="value"
-          stroke="#5c7a4a"
-          strokeWidth={2}
-          dot={{ r: 3, fill: '#5c7a4a' }}
+          stroke={CHART_COLORS.line}
+          strokeWidth={1.5}
+          dot={false}
+          activeDot={{ r: 4, fill: CHART_COLORS.line }}
         />
       </LineChart>
     </ResponsiveContainer>

@@ -6,6 +6,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
+import { getCategoryColor } from '@/lib/chartTheme';
 import { formatCategory, formatMoney } from '@/lib/utils';
 
 interface CategoryPoint {
@@ -13,25 +14,7 @@ interface CategoryPoint {
   amount: number;
 }
 
-/** Capybara-themed palette for spending categories */
-export const CATEGORY_COLORS = [
-  '#5c7a4a',
-  '#3b6978',
-  '#8b6914',
-  '#b45309',
-  '#7c6b9d',
-  '#c45c5c',
-  '#4a8f6e',
-  '#6b8cae',
-  '#a67c52',
-  '#9b59b6',
-  '#e07b39',
-  '#2d6a6a',
-];
-
-export function getCategoryColor(index: number): string {
-  return CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-}
+export { getCategoryColor };
 
 interface TooltipPayload {
   name: string;
@@ -49,9 +32,9 @@ function CategoryTooltip({
   if (!active || !payload?.length) return null;
   const item = payload[0];
   return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow-md">
-      <p className="font-medium">{item.name}</p>
-      <p className="text-capy-muted">
+    <div className="rounded-lg bg-card px-3 py-2 text-sm shadow-md ring-1 ring-black/5">
+      <p className="font-medium text-foreground">{item.name}</p>
+      <p className="tabular-nums text-muted-foreground">
         {formatMoney(item.value)} ({item.payload.percent.toFixed(1)}%)
       </p>
     </div>
@@ -60,7 +43,9 @@ function CategoryTooltip({
 
 export function CategoryChart({ data }: { data: CategoryPoint[] }) {
   if (!data.length) {
-    return <p className="py-8 text-center text-sm text-capy-muted">No spending data</p>;
+    return (
+      <p className="py-10 text-center text-sm text-muted-foreground">No spending data</p>
+    );
   }
 
   const total = data.reduce((sum, d) => sum + d.amount, 0);
@@ -79,10 +64,10 @@ export function CategoryChart({ data }: { data: CategoryPoint[] }) {
           nameKey="label"
           cx="50%"
           cy="50%"
-          innerRadius={55}
+          innerRadius={60}
           outerRadius={95}
-          paddingAngle={2}
-          stroke="#fff"
+          paddingAngle={1}
+          stroke="hsl(0 0% 100%)"
           strokeWidth={2}
         >
           {chartData.map((_, i) => (
@@ -96,7 +81,7 @@ export function CategoryChart({ data }: { data: CategoryPoint[] }) {
           align="center"
           iconType="circle"
           iconSize={8}
-          wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+          wrapperStyle={{ fontSize: 12, paddingTop: 16, color: 'hsl(240 4% 46%)' }}
         />
       </PieChart>
     </ResponsiveContainer>

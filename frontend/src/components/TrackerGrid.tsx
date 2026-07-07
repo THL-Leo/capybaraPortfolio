@@ -19,7 +19,7 @@ export function TrackerGrid({
 }: TrackerGridProps) {
   if (stocks.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed bg-white px-6 py-12 text-center text-sm text-capy-muted">
+      <div className="rounded-lg bg-muted/40 px-6 py-12 text-center text-sm text-muted-foreground">
         {emptyMessage}
       </div>
     );
@@ -33,7 +33,7 @@ export function TrackerGrid({
   return (
     <div
       className={cn(
-        'grid grid-cols-3 gap-4',
+        'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3',
         scrollable && 'overflow-y-auto pr-1',
       )}
       style={scrollable ? { maxHeight } : undefined}

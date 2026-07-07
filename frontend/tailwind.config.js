@@ -4,17 +4,20 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         capy: {
-          bg: '#f7f4ef',
-          surface: '#ffffff',
-          primary: '#5c7a4a',
-          'primary-dark': '#4a6340',
-          brown: '#8b6914',
-          text: '#2d2a26',
-          muted: '#6b6560',
-          invest: '#3b6978',
-          credit: '#b45309',
+          bg: 'hsl(0 0% 98%)',
+          surface: 'hsl(0 0% 100%)',
+          primary: 'hsl(240 6% 10%)',
+          'primary-dark': 'hsl(240 6% 6%)',
+          brown: 'hsl(240 4% 46%)',
+          text: 'hsl(240 6% 10%)',
+          muted: 'hsl(240 4% 46%)',
+          invest: 'hsl(240 4% 46%)',
+          credit: 'hsl(0 72% 51%)',
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -41,15 +44,35 @@ export default {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        positive: {
+          DEFAULT: 'hsl(var(--positive))',
+          foreground: 'hsl(var(--positive-foreground))',
+        },
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        chart: {
+          1: 'hsl(var(--chart-1))',
+          2: 'hsl(var(--chart-2))',
+          3: 'hsl(var(--chart-3))',
+          4: 'hsl(var(--chart-4))',
+          5: 'hsl(var(--chart-5))',
         },
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      keyframes: {
+        progress: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(400%)' },
+        },
+      },
+      animation: {
+        progress: 'progress 1.2s ease-in-out infinite',
       },
     },
   },

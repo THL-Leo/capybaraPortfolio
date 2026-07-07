@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { TrackerGrid } from '@/components/TrackerGrid';
 import { TickerSearch } from '@/components/TickerSearch';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTracker } from '@/hooks/useTracker';
 import { cn } from '@/lib/utils';
@@ -88,25 +90,25 @@ export default function Tracker() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Tracker</h1>
-          <p className="text-sm text-capy-muted">Track stocks across your watchlists</p>
-        </div>
-        {hasLists && (
-          <div className="flex flex-wrap items-center gap-2">
-            {activeListId != null && (
-              <Button variant="outline" size="sm" onClick={handleDeleteList}>
-                Delete list
+    <div className="space-y-8">
+      <PageHeader
+        title="Tracker"
+        description="Track stocks across your watchlists"
+        actions={
+          hasLists ? (
+            <>
+              {activeListId != null && (
+                <Button variant="outline" size="sm" onClick={handleDeleteList}>
+                  Delete list
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setShowNewList((value) => !value)}>
+                + New list
               </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => setShowNewList((value) => !value)}>
-              + New list
-            </Button>
-          </div>
-        )}
-      </div>
+            </>
+          ) : undefined
+        }
+      />
 
       {error && <Alert variant="destructive">{error}</Alert>}
 
@@ -116,7 +118,7 @@ export default function Tracker() {
             <CardTitle>Create a list to see stock trends</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-center text-sm text-capy-muted">
+            <p className="text-center text-sm text-muted-foreground">
               Build a watchlist to track live prices, daily changes, and intraday charts for the
               stocks you care about.
             </p>
@@ -158,37 +160,40 @@ export default function Tracker() {
             </Card>
           )}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1 border-b border-border/60">
             {lists.map((list) => (
               <button
                 key={list.id}
                 type="button"
                 onClick={() => setActiveListId(list.id)}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-sm font-medium text-capy-muted hover:bg-capy-primary/10 hover:text-capy-primary',
-                  activeListId === list.id && 'bg-capy-primary/15 text-capy-primary',
+                  'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                  activeListId === list.id
+                    ? 'border-foreground text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
                 {list.name}
                 {list.stock_count != null && (
-                  <span className="ml-1 text-xs opacity-70">({list.stock_count})</span>
+                  <span className="ml-1 text-xs opacity-60">({list.stock_count})</span>
                 )}
               </button>
             ))}
           </div>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>{activeList?.name ?? 'Watchlist'}</CardTitle>
             </CardHeader>
+            {stocksLoading && <Progress className="rounded-none" />}
             <CardContent className="space-y-4">
               <TickerSearch
                 onAdd={handleAddStock}
                 onSearch={searchTickers}
-                disabled={activeListId == null}
+                disabled={activeListId == null || stocksLoading}
               />
               {stocksLoading ? (
-                <Skeleton className="h-48 w-full" />
+                <div className="min-h-48" aria-hidden />
               ) : (
                 <TrackerGrid stocks={stocks} onRemove={handleRemoveStock} />
               )}

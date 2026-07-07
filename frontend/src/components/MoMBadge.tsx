@@ -14,12 +14,18 @@ export function MoMBadge({ current, previous, previousLabel }: MoMBadgeProps) {
   const up = diff > 0;
 
   return (
-    <p className="text-sm text-capy-muted">
+    <p className="text-sm text-muted-foreground">
       {diff === 0 ? (
         <>Same as {previousLabel}</>
       ) : (
         <>
-          <span className={up ? 'text-destructive' : 'text-capy-primary'}>
+          <span
+            className={
+              up
+                ? 'rounded-full bg-destructive/10 px-2 py-0.5 text-destructive'
+                : 'rounded-full bg-positive/10 px-2 py-0.5 text-positive'
+            }
+          >
             {up ? '↑' : '↓'} {formatMoney(Math.abs(diff))}
             {pct != null && ` (${Math.abs(Number(pct))}%)`}
           </span>

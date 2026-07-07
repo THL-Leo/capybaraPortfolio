@@ -29,7 +29,7 @@ export function TransactionsGrid({ transactions, emptyMessage }: TransactionsGri
         {
           key: 'category',
           header: 'Category',
-          className: 'truncate text-capy-muted',
+          className: 'truncate text-muted-foreground',
           render: (tx) =>
             tx.category_primary ? formatCategory(tx.category_primary) : '—',
         },

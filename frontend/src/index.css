@@ -4,24 +4,31 @@
 
 @layer base {
   :root {
-    --background: 38 33% 95%;
-    --foreground: 30 8% 16%;
+    --background: 0 0% 98%;
+    --foreground: 240 6% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 30 8% 16%;
-    --primary: 96 24% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 38 20% 92%;
-    --secondary-foreground: 30 8% 16%;
-    --muted: 30 6% 90%;
-    --muted-foreground: 25 5% 40%;
-    --accent: 96 24% 92%;
-    --accent-foreground: 96 24% 30%;
+    --card-foreground: 240 6% 10%;
+    --primary: 240 6% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 8% 88%;
-    --input: 30 8% 88%;
-    --ring: 96 24% 38%;
-    --radius: 0.75rem;
+    --positive: 142 71% 35%;
+    --positive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 240 6% 10%;
+    --radius: 0.5rem;
+    --chart-1: 240 6% 10%;
+    --chart-2: 240 4% 46%;
+    --chart-3: 240 5% 65%;
+    --chart-4: 240 5% 84%;
+    --chart-5: 142 71% 35%;
   }
 
   * {
@@ -29,8 +36,22 @@
   }
 
   body {
-    @apply bg-capy-bg text-capy-text antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
     margin: 0;
     min-height: 100vh;
+  }
+}
+
+@layer components {
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
+  .metric-value {
+    @apply text-3xl font-semibold tracking-tight tabular-nums text-foreground;
+  }
+
+  .surface {
+    @apply rounded-xl bg-card ring-1 ring-black/5;
   }
 }
