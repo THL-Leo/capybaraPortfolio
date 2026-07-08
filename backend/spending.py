@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta, timezone
 
+from categories import NON_SPENDING_CATEGORIES, effective_category_sql
+
 
 def _month_prefix(month: str | None = None) -> str:
     if month:
@@ -9,10 +11,33 @@ def _month_prefix(month: str | None = None) -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m')
 
 
+CATEGORY_LABELS = {
+    'RENT_AND_UTILITIES': 'Rent & Utilities',
+    'CREDIT_CARD_PAYMENT': 'Credit Card Payment',
+}
+
+
 def _format_category(cat: str | None) -> str:
     if not cat:
         return 'Other'
+    if cat in CATEGORY_LABELS:
+        return CATEGORY_LABELS[cat]
     return cat.replace('_', ' ').title()
+
+
+def _spending_filters(account_id: str | None = None) -> tuple[list[str], list]:
+    """Clauses for purchase-only spending (excludes card payments and transfers)."""
+    excluded = ', '.join(f"'{cat}'" for cat in NON_SPENDING_CATEGORIES)
+    where = [
+        'user_id = ?',
+        'pending = 0',
+        'amount > 0',
+        f"({effective_category_sql()}) NOT IN ({excluded})",
+    ]
+    params: list = []
+    if account_id is None:
+        where.append("account_type = 'credit'")
+    return where, params
 
 
 def get_spending_by_category(
@@ -22,19 +47,15 @@ def get_spending_by_category(
     account_id: str | None = None,
 ) -> list:
     prefix = _month_prefix(month)
-    where = [
-        'user_id = ?',
-        'pending = 0',
-        'amount > 0',
-        'transaction_date LIKE ?',
-    ]
-    params: list = [user_id, f'{prefix}%']
+    where, params = _spending_filters(account_id)
+    where.append('transaction_date LIKE ?')
+    params = [user_id, *params, f'{prefix}%']
     if account_id:
         where.append('account_id = ?')
         params.append(account_id)
     rows = db.execute(
         f'''
-        SELECT COALESCE(category_primary, 'OTHER') AS cat,
+        SELECT {effective_category_sql()} AS cat,
                COALESCE(SUM(amount), 0) AS total
         FROM plaid_card_transactions
         WHERE {' AND '.join(where)}
@@ -50,6 +71,7 @@ def get_spending_by_category(
             'amount': round(float(r[1]), 2),
         }
         for r in rows
+        if r[0] not in NON_SPENDING_CATEGORIES
     ]
 
 
@@ -62,13 +84,9 @@ def get_spending_by_week(
     now = datetime.now(timezone.utc).date()
     start = now - timedelta(weeks=weeks)
     start_str = start.isoformat()
-    where = [
-        'user_id = ?',
-        'pending = 0',
-        'amount > 0',
-        'transaction_date >= ?',
-    ]
-    params: list = [user_id, start_str]
+    where, params = _spending_filters(account_id)
+    where.append('transaction_date >= ?')
+    params = [user_id, *params, start_str]
     if account_id:
         where.append('account_id = ?')
         params.append(account_id)
@@ -99,17 +117,19 @@ def get_spending_by_week(
 
 def get_monthly_spending_totals(db, user_id: int, months: int = 12) -> list:
     """Total credit-card spend per calendar month, most recent first."""
+    where, extra_params = _spending_filters()
+    where.append('transaction_date IS NOT NULL')
     rows = db.execute(
-        '''
+        f'''
         SELECT substr(transaction_date, 1, 7) AS month,
                COALESCE(SUM(amount), 0) AS total
         FROM plaid_card_transactions
-        WHERE user_id = ? AND pending = 0 AND amount > 0
+        WHERE {' AND '.join(where)}
         GROUP BY month
         ORDER BY month DESC
         LIMIT ?
         ''',
-        (user_id, months),
+        (user_id, *extra_params, months),
     ).fetchall()
 
     results = []

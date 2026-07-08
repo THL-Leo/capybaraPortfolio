@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from plaid.exceptions import ApiException
 
 from crypto_util import decrypt_token
+from categories import backfill_transaction_categories, is_hidden_payment_transaction, resolve_category_primary
 from portfolio import record_net_worth_snapshot
 from db import get_db, get_connection
 from plaid_client import get_balances, get_holdings, get_item, sync_transactions
@@ -23,9 +24,12 @@ def _security_map(securities):
 
 def _category_primary(tx):
     pfc = tx.get('personal_finance_category') or {}
-    if isinstance(pfc, dict):
-        return pfc.get('primary')
-    return None
+    primary = pfc.get('primary') if isinstance(pfc, dict) else None
+    return resolve_category_primary(
+        primary,
+        tx.get('name'),
+        tx.get('merchant_name'),
+    )
 
 
 def _upsert_spending_transaction(cursor, user_id, tx, synced_at, account_type: str):
@@ -90,8 +94,18 @@ def _sync_spending_transactions(db, user_id, item_id, access_token, item_row) ->
             account_id = tx.get('account_id')
             if account_id not in spending_accounts:
                 continue
+            account_type = spending_accounts[account_id]
+            category = _category_primary(tx)
+            if is_hidden_payment_transaction(category, account_type, tx.get('amount')):
+                tid = tx.get('transaction_id')
+                if tid:
+                    cursor.execute(
+                        'DELETE FROM plaid_card_transactions WHERE transaction_id = ? AND user_id = ?',
+                        (tid, user_id),
+                    )
+                continue
             _upsert_spending_transaction(
-                cursor, user_id, tx, synced_at, spending_accounts[account_id],
+                cursor, user_id, tx, synced_at, account_type,
             )
             tx_synced += 1
 
@@ -270,6 +284,7 @@ def sync_item_for_user(db, user_id: int, item_row) -> dict:
             return {'ok': False, 'error': str(body)}
 
     db.commit()
+    backfill_transaction_categories(db, user_id)
     record_net_worth_snapshot(db, user_id)
     return {
         'ok': True,

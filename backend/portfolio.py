@@ -3,6 +3,13 @@
 import json
 from datetime import datetime, timezone
 
+from categories import (
+    NON_SPENDING_CATEGORIES,
+    apply_category_to_transaction,
+    effective_category_sql,
+    is_hidden_payment_transaction,
+)
+
 ASSET_BUCKETS = (
     'checking',
     'savings',
@@ -161,7 +168,17 @@ def get_card_transactions(
     '''
     params.append(limit)
     rows = db.execute(sql, tuple(params)).fetchall()
-    return [dict(r) for r in rows]
+    results = []
+    for row in rows:
+        item = apply_category_to_transaction(dict(row))
+        if is_hidden_payment_transaction(
+            item.get('category_primary'),
+            item.get('account_type'),
+            item.get('amount'),
+        ):
+            continue
+        results.append(item)
+    return results
 
 
 def compute_spending_summary(
@@ -183,10 +200,14 @@ def compute_spending_summary(
         label = now.strftime('%B %Y')
 
     where = ['user_id = ?', 'pending = 0', 'amount > 0', 'transaction_date LIKE ?']
+    excluded = ', '.join(f"'{cat}'" for cat in NON_SPENDING_CATEGORIES)
+    where.append(f"({effective_category_sql()}) NOT IN ({excluded})")
     params: list = [user_id, f'{month_prefix}%']
     if account_id:
         where.append('account_id = ?')
         params.append(account_id)
+    else:
+        where.append("account_type = 'credit'")
 
     row = db.execute(
         f'SELECT COALESCE(SUM(amount), 0) FROM plaid_card_transactions WHERE {" AND ".join(where)}',

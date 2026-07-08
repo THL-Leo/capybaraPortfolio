@@ -14,6 +14,13 @@ export function formatMoney(n: number | null | undefined): string {
 }
 
 export function formatCategory(category: string): string {
+  const labels: Record<string, string> = {
+    RENT_AND_UTILITIES: 'Rent & Utilities',
+    CREDIT_CARD_PAYMENT: 'Credit Card Payment',
+  };
+  if (labels[category]) {
+    return labels[category];
+  }
   return category
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
