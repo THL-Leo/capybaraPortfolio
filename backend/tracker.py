@@ -2,9 +2,30 @@ import sqlite3
 
 import yfinance as yf
 
+from portfolio import get_holdings_by_ticker
+
+HOLDINGS_LIST_ID = 'holdings'
+HOLDINGS_LIST_NAME = 'My Holdings'
+DEFAULT_RANGE = '1D'
+
+RANGE_MAP = {
+    '1D': ('1d', '5m'),
+    '5D': ('5d', '30m'),
+    '1M': ('1mo', '1d'),
+    '6M': ('6mo', '1d'),
+    'YTD': ('ytd', '1d'),
+}
+
 
 def _normalize_ticker(ticker):
     return ticker.strip().upper()
+
+
+def normalize_range(range_param):
+    key = (range_param or DEFAULT_RANGE).strip().upper()
+    if key not in RANGE_MAP:
+        return DEFAULT_RANGE
+    return key
 
 
 def _get_owned_list(db, user_id, list_id):
@@ -34,7 +55,24 @@ def get_lists(db, user_id):
         ''',
         (user_id,),
     ).fetchall()
-    return [dict(row) for row in rows]
+
+    result = []
+    holdings = get_holdings_by_ticker(db, user_id)
+    if holdings:
+        result.append({
+            'id': HOLDINGS_LIST_ID,
+            'name': HOLDINGS_LIST_NAME,
+            'list_type': 'holdings',
+            'stock_count': len(holdings),
+            'created_at': None,
+        })
+
+    for row in rows:
+        item = dict(row)
+        item['list_type'] = 'watchlist'
+        result.append(item)
+
+    return result
 
 
 def create_list(db, user_id, name):
@@ -54,6 +92,7 @@ def create_list(db, user_id, name):
     ).fetchone()
     result = dict(row)
     result['stock_count'] = 0
+    result['list_type'] = 'watchlist'
     return result
 
 
@@ -185,10 +224,11 @@ def _timestamp_iso(timestamp):
     return str(timestamp)
 
 
-def _fetch_intraday(ticker_obj):
+def _fetch_history(ticker_obj, range_key):
+    period, interval = RANGE_MAP[range_key]
     try:
-        history = ticker_obj.history(period='1d', interval='5m')
-        if history.empty:
+        history = ticker_obj.history(period=period, interval=interval)
+        if history.empty and range_key == '1D':
             history = ticker_obj.history(period='1d', interval='15m')
         if history.empty:
             return []
@@ -207,7 +247,19 @@ def _fetch_intraday(ticker_obj):
         return []
 
 
-def _quote_from_ticker(ticker_obj, ticker):
+def _range_change_from_history(history_points):
+    if len(history_points) < 2:
+        return None, None
+    first = history_points[0]['price']
+    last = history_points[-1]['price']
+    if not first:
+        return None, None
+    change = round(last - first, 2)
+    change_pct = round((change / first) * 100, 2)
+    return change, change_pct
+
+
+def _quote_from_ticker(ticker_obj, ticker, range_key=DEFAULT_RANGE):
     name = ticker
     price = None
     change = None
@@ -245,7 +297,13 @@ def _quote_from_ticker(ticker_obj, ticker):
         except Exception:
             pass
 
-    intraday = _fetch_intraday(ticker_obj)
+    history = _fetch_history(ticker_obj, range_key)
+
+    if range_key != '1D' and history:
+        range_change, range_change_pct = _range_change_from_history(history)
+        if range_change is not None:
+            change = range_change
+            change_pct = range_change_pct
 
     return {
         'ticker': ticker,
@@ -253,20 +311,22 @@ def _quote_from_ticker(ticker_obj, ticker):
         'price': price,
         'change': change,
         'change_pct': change_pct,
-        'intraday': intraday,
+        'history': history,
+        'intraday': history,
     }
 
 
-def fetch_quotes(tickers):
+def fetch_quotes(tickers, range_key=DEFAULT_RANGE):
     if not tickers:
         return []
 
+    range_key = normalize_range(range_key)
     normalized = [_normalize_ticker(t) for t in tickers]
     quotes = []
 
     for ticker in normalized:
         try:
-            quotes.append(_quote_from_ticker(yf.Ticker(ticker), ticker))
+            quotes.append(_quote_from_ticker(yf.Ticker(ticker), ticker, range_key))
         except Exception:
             quotes.append({
                 'ticker': ticker,
@@ -274,14 +334,36 @@ def fetch_quotes(tickers):
                 'price': None,
                 'change': None,
                 'change_pct': None,
+                'history': [],
                 'intraday': [],
             })
 
     return quotes
 
 
-def get_stocks_with_quotes(db, user_id, list_id):
+def get_stocks_with_quotes(db, user_id, list_id, range_key=DEFAULT_RANGE):
     tickers = get_tickers(db, user_id, list_id)
     if tickers is None:
         return None
-    return fetch_quotes(tickers)
+    return fetch_quotes(tickers, range_key)
+
+
+def get_holdings_stocks_with_quotes(db, user_id, range_key=DEFAULT_RANGE):
+    holdings_by_ticker = get_holdings_by_ticker(db, user_id)
+    if not holdings_by_ticker:
+        return []
+
+    tickers = sorted(holdings_by_ticker.keys())
+    quotes = fetch_quotes(tickers, range_key)
+
+    for quote in quotes:
+        holding = holdings_by_ticker.get(quote['ticker'], {})
+        quote['quantity'] = holding.get('quantity')
+        quote['market_value'] = holding.get('market_value')
+        quote['unrealized_gain'] = holding.get('unrealized_gain')
+        quote['unrealized_gain_pct'] = holding.get('unrealized_gain_pct')
+        security_name = holding.get('name')
+        if security_name and quote.get('name') == quote['ticker']:
+            quote['name'] = security_name
+
+    return quotes

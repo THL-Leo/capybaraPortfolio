@@ -422,6 +422,50 @@ def get_net_worth_snapshots_for_chart(db, user_id: int) -> list:
     return snapshots
 
 
+CASH_TICKERS = frozenset({'CASH', 'CUR:USD', 'USD'})
+
+
+def get_holdings_by_ticker(db, user_id: int) -> dict[str, dict]:
+    """Aggregate Plaid holdings by ticker symbol (dedupes across accounts)."""
+    by_ticker: dict[str, dict] = {}
+    for h in get_holdings_with_pnl(db, user_id):
+        ticker = (h.get('ticker_symbol') or '').strip().upper()
+        if not ticker or ticker in CASH_TICKERS:
+            continue
+        qty = h.get('quantity')
+        if qty is None or float(qty) <= 0:
+            continue
+
+        if ticker not in by_ticker:
+            by_ticker[ticker] = {
+                'ticker': ticker,
+                'name': h.get('security_name') or ticker,
+                'quantity': 0.0,
+                'market_value': 0.0,
+                'cost_basis': 0.0,
+            }
+
+        entry = by_ticker[ticker]
+        entry['quantity'] += float(qty)
+        entry['market_value'] = round(entry['market_value'] + float(h.get('market_value') or 0), 2)
+        cost = h.get('cost_basis')
+        if cost is not None:
+            entry['cost_basis'] = round(entry['cost_basis'] + float(cost), 2)
+
+    for entry in by_ticker.values():
+        cost = entry.get('cost_basis') or 0
+        if cost > 0:
+            gain = round(entry['market_value'] - cost, 2)
+            entry['unrealized_gain'] = gain
+            entry['unrealized_gain_pct'] = round((gain / cost) * 100, 2)
+        else:
+            entry['unrealized_gain'] = None
+            entry['unrealized_gain_pct'] = None
+        entry['quantity'] = round(entry['quantity'], 4)
+
+    return by_ticker
+
+
 def get_holdings_with_pnl(db, user_id: int) -> list:
     holdings = get_plaid_holdings(db, user_id)
     enriched = []

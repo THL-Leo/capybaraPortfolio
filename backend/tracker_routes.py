@@ -8,8 +8,10 @@ from tracker import (
     add_stock,
     create_list,
     delete_list,
+    get_holdings_stocks_with_quotes,
     get_lists,
     get_stocks_with_quotes,
+    normalize_range,
     remove_stock,
     search_tickers,
 )
@@ -58,12 +60,23 @@ def tracker_delete_list(list_id):
     return '', 204
 
 
+@tracker_bp.route('/tracker/holdings/stocks', methods=['GET'])
+@jwt_required()
+def tracker_get_holdings_stocks():
+    user_id = int(get_jwt_identity())
+    range_key = normalize_range(request.args.get('range'))
+    db = get_db()
+    stocks = get_holdings_stocks_with_quotes(db, user_id, range_key)
+    return jsonify({'stocks': stocks}), 200
+
+
 @tracker_bp.route('/tracker/lists/<int:list_id>/stocks', methods=['GET'])
 @jwt_required()
 def tracker_get_stocks(list_id):
     user_id = int(get_jwt_identity())
+    range_key = normalize_range(request.args.get('range'))
     db = get_db()
-    stocks = get_stocks_with_quotes(db, user_id, list_id)
+    stocks = get_stocks_with_quotes(db, user_id, list_id, range_key)
 
     if stocks is None:
         return jsonify({'error': 'List not found'}), 404

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiDelete, apiGet, apiPost } from '@/api/client';
 import type {
+  ChartRange,
   SearchResult,
   TrackerList,
+  TrackerListId,
   TrackerListsResponse,
   TrackerSearchResponse,
   TrackerStocksResponse,
@@ -11,12 +13,16 @@ import type {
 
 export function useTracker() {
   const [lists, setLists] = useState<TrackerList[]>([]);
-  const [activeListId, setActiveListId] = useState<number | null>(null);
+  const [activeListId, setActiveListId] = useState<TrackerListId | null>(null);
+  const [chartRange, setChartRange] = useState<ChartRange>('1D');
   const [stocks, setStocks] = useState<TrackedStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [stocksLoading, setStocksLoading] = useState(false);
   const [error, setError] = useState('');
-  const latestStocksListIdRef = useRef<number | null>(null);
+  const latestStocksRequestRef = useRef<string | null>(null);
+
+  const activeList = lists.find((list) => list.id === activeListId) ?? null;
+  const isHoldingsList = activeList?.list_type === 'holdings';
 
   const refreshLists = useCallback(async () => {
     setError('');
@@ -28,6 +34,10 @@ export function useTracker() {
         if (current && nextLists.some((list) => list.id === current)) {
           return current;
         }
+        const holdings = nextLists.find((list) => list.list_type === 'holdings');
+        if (holdings) {
+          return holdings.id;
+        }
         return nextLists[0]?.id ?? null;
       });
     } catch (e) {
@@ -35,30 +45,38 @@ export function useTracker() {
     }
   }, []);
 
-  const refreshStocks = useCallback(async (listId: number | null) => {
-    if (listId == null) {
-      latestStocksListIdRef.current = null;
-      setStocks([]);
-      return;
-    }
-
-    latestStocksListIdRef.current = listId;
-    setStocksLoading(true);
-    setError('');
-    try {
-      const res = await apiGet<TrackerStocksResponse>(`/tracker/lists/${listId}/stocks`);
-      if (latestStocksListIdRef.current !== listId) return;
-      setStocks(res.stocks ?? []);
-    } catch (e) {
-      if (latestStocksListIdRef.current !== listId) return;
-      setError(e instanceof Error ? e.message : 'Failed to load stocks');
-      setStocks([]);
-    } finally {
-      if (latestStocksListIdRef.current === listId) {
-        setStocksLoading(false);
+  const refreshStocks = useCallback(
+    async (listId: TrackerListId | null, range: ChartRange) => {
+      if (listId == null) {
+        latestStocksRequestRef.current = null;
+        setStocks([]);
+        return;
       }
-    }
-  }, []);
+
+      const requestKey = `${listId}:${range}`;
+      latestStocksRequestRef.current = requestKey;
+      setStocksLoading(true);
+      setError('');
+      try {
+        const path =
+          listId === 'holdings'
+            ? `/tracker/holdings/stocks?range=${encodeURIComponent(range)}`
+            : `/tracker/lists/${listId}/stocks?range=${encodeURIComponent(range)}`;
+        const res = await apiGet<TrackerStocksResponse>(path);
+        if (latestStocksRequestRef.current !== requestKey) return;
+        setStocks(res.stocks ?? []);
+      } catch (e) {
+        if (latestStocksRequestRef.current !== requestKey) return;
+        setError(e instanceof Error ? e.message : 'Failed to load stocks');
+        setStocks([]);
+      } finally {
+        if (latestStocksRequestRef.current === requestKey) {
+          setStocksLoading(false);
+        }
+      }
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -72,11 +90,11 @@ export function useTracker() {
 
   useEffect(() => {
     if (activeListId != null) {
-      refreshStocks(activeListId);
+      refreshStocks(activeListId, chartRange);
     } else {
       setStocks([]);
     }
-  }, [activeListId, refreshStocks]);
+  }, [activeListId, chartRange, refreshStocks]);
 
   const createList = useCallback(
     async (name: string) => {
@@ -100,28 +118,28 @@ export function useTracker() {
 
   const addStock = useCallback(
     async (ticker: string) => {
-      if (activeListId == null) {
+      if (activeListId == null || activeListId === 'holdings') {
         throw new Error('No watchlist selected');
       }
       setError('');
       await apiPost(`/tracker/lists/${activeListId}/stocks`, { ticker });
-      await refreshStocks(activeListId);
+      await refreshStocks(activeListId, chartRange);
       await refreshLists();
     },
-    [activeListId, refreshLists, refreshStocks],
+    [activeListId, chartRange, refreshLists, refreshStocks],
   );
 
   const removeStock = useCallback(
     async (ticker: string) => {
-      if (activeListId == null) {
+      if (activeListId == null || activeListId === 'holdings') {
         return;
       }
       setError('');
       await apiDelete(`/tracker/lists/${activeListId}/stocks/${encodeURIComponent(ticker)}`);
-      await refreshStocks(activeListId);
+      await refreshStocks(activeListId, chartRange);
       await refreshLists();
     },
-    [activeListId, refreshLists, refreshStocks],
+    [activeListId, chartRange, refreshLists, refreshStocks],
   );
 
   const searchTickers = useCallback(async (query: string): Promise<SearchResult[]> => {
@@ -137,7 +155,11 @@ export function useTracker() {
   return {
     lists,
     activeListId,
+    activeList,
+    isHoldingsList,
     setActiveListId,
+    chartRange,
+    setChartRange,
     stocks,
     loading,
     stocksLoading,

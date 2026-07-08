@@ -1,10 +1,12 @@
-import type { TrackedStock } from '@/api/types';
+import type { ChartRange, TrackedStock } from '@/api/types';
 import { TrackerStockCard } from '@/components/TrackerStockCard';
 import { cn } from '@/lib/utils';
 
 interface TrackerGridProps {
   stocks: TrackedStock[];
-  onRemove: (ticker: string) => void;
+  chartRange?: ChartRange;
+  readOnly?: boolean;
+  onRemove?: (ticker: string) => void;
   emptyMessage?: string;
 }
 
@@ -14,6 +16,8 @@ const SCROLLABLE_ROWS = 3;
 
 export function TrackerGrid({
   stocks,
+  chartRange = '1D',
+  readOnly = false,
   onRemove,
   emptyMessage = 'Search for a stock to start tracking',
 }: TrackerGridProps) {
@@ -39,7 +43,13 @@ export function TrackerGrid({
       style={scrollable ? { maxHeight } : undefined}
     >
       {stocks.map((stock) => (
-        <TrackerStockCard key={stock.ticker} stock={stock} onRemove={onRemove} />
+        <TrackerStockCard
+          key={stock.ticker}
+          stock={stock}
+          chartRange={chartRange}
+          readOnly={readOnly}
+          onRemove={onRemove}
+        />
       ))}
     </div>
   );

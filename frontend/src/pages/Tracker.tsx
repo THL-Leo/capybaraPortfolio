@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { TrackerGrid } from '@/components/TrackerGrid';
 import { TickerSearch } from '@/components/TickerSearch';
@@ -8,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CHART_RANGES } from '@/api/types';
 import { useTracker } from '@/hooks/useTracker';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +17,11 @@ export default function Tracker() {
   const {
     lists,
     activeListId,
+    activeList,
+    isHoldingsList,
     setActiveListId,
+    chartRange,
+    setChartRange,
     stocks,
     loading,
     stocksLoading,
@@ -32,8 +38,8 @@ export default function Tracker() {
   const [creatingList, setCreatingList] = useState(false);
   const [showNewList, setShowNewList] = useState(false);
 
-  const activeList = lists.find((list) => list.id === activeListId);
   const hasLists = lists.length > 0;
+  const hasWatchlists = lists.some((list) => list.list_type !== 'holdings');
 
   const handleCreateList = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -74,7 +80,7 @@ export default function Tracker() {
   };
 
   const handleDeleteList = async () => {
-    if (activeListId == null) {
+    if (activeListId == null || activeListId === 'holdings') {
       return;
     }
     setError('');
@@ -93,11 +99,11 @@ export default function Tracker() {
     <div className="space-y-8">
       <PageHeader
         title="Tracker"
-        description="Track stocks across your watchlists"
+        description="Track your holdings and watchlists"
         actions={
-          hasLists ? (
+          hasWatchlists || showNewList ? (
             <>
-              {activeListId != null && (
+              {activeListId != null && !isHoldingsList && (
                 <Button variant="outline" size="sm" onClick={handleDeleteList}>
                   Delete list
                 </Button>
@@ -106,6 +112,10 @@ export default function Tracker() {
                 + New list
               </Button>
             </>
+          ) : hasLists ? (
+            <Button variant="outline" size="sm" onClick={() => setShowNewList((value) => !value)}>
+              + New list
+            </Button>
           ) : undefined
         }
       />
@@ -119,8 +129,11 @@ export default function Tracker() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-center text-sm text-muted-foreground">
-              Build a watchlist to track live prices, daily changes, and intraday charts for the
-              stocks you care about.
+              Link a brokerage on{' '}
+              <Link to="/accounts" className="text-foreground underline underline-offset-2">
+                Accounts
+              </Link>{' '}
+              to see your holdings here, or build a watchlist to track live prices and charts.
             </p>
             <form onSubmit={handleCreateList} className="mx-auto flex max-w-md flex-wrap justify-center gap-2">
               <Input
@@ -163,7 +176,7 @@ export default function Tracker() {
           <div className="flex flex-wrap gap-1 border-b border-border/60">
             {lists.map((list) => (
               <button
-                key={list.id}
+                key={String(list.id)}
                 type="button"
                 onClick={() => setActiveListId(list.id)}
                 className={cn(
@@ -182,20 +195,49 @@ export default function Tracker() {
           </div>
 
           <Card className="overflow-hidden">
-            <CardHeader>
+            <CardHeader className="space-y-4">
               <CardTitle>{activeList?.name ?? 'Watchlist'}</CardTitle>
+              <div className="flex flex-wrap gap-1">
+                {CHART_RANGES.map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={() => setChartRange(range)}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                      chartRange === range
+                        ? 'bg-foreground text-background'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
             </CardHeader>
             {stocksLoading && <Progress className="rounded-none" />}
             <CardContent className="space-y-4">
-              <TickerSearch
-                onAdd={handleAddStock}
-                onSearch={searchTickers}
-                disabled={activeListId == null || stocksLoading}
-              />
+              {!isHoldingsList && (
+                <TickerSearch
+                  onAdd={handleAddStock}
+                  onSearch={searchTickers}
+                  disabled={activeListId == null || stocksLoading}
+                />
+              )}
               {stocksLoading ? (
                 <div className="min-h-48" aria-hidden />
               ) : (
-                <TrackerGrid stocks={stocks} onRemove={handleRemoveStock} />
+                <TrackerGrid
+                  stocks={stocks}
+                  chartRange={chartRange}
+                  readOnly={isHoldingsList}
+                  onRemove={isHoldingsList ? undefined : handleRemoveStock}
+                  emptyMessage={
+                    isHoldingsList
+                      ? 'No chartable holdings yet. Link a brokerage on Accounts and sync your positions.'
+                      : 'Search for a stock to start tracking'
+                  }
+                />
               )}
             </CardContent>
           </Card>

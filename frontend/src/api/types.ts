@@ -158,17 +158,26 @@ export interface MonthlyTotalsResponse {
   months: MonthlySpendingTotal[];
 }
 
+export type ChartRange = '1D' | '5D' | '1M' | '6M' | 'YTD';
+export type TrackerListId = number | 'holdings';
+
+export const CHART_RANGES: ChartRange[] = ['1D', '5D', '1M', '6M', 'YTD'];
+
 export interface TrackerList {
-  id: number;
+  id: TrackerListId;
   name: string;
+  list_type?: 'watchlist' | 'holdings';
   stock_count?: number;
-  created_at?: string;
+  created_at?: string | null;
 }
 
-export interface IntradayPoint {
+export interface PricePoint {
   at: string;
   price: number;
 }
+
+/** @deprecated Use PricePoint */
+export type IntradayPoint = PricePoint;
 
 export interface TrackedStock {
   ticker: string;
@@ -176,7 +185,13 @@ export interface TrackedStock {
   price: number | null;
   change: number | null;
   change_pct: number | null;
-  intraday?: IntradayPoint[];
+  history?: PricePoint[];
+  /** @deprecated Use history */
+  intraday?: PricePoint[];
+  quantity?: number;
+  market_value?: number;
+  unrealized_gain?: number | null;
+  unrealized_gain_pct?: number | null;
 }
 
 export interface SearchResult {

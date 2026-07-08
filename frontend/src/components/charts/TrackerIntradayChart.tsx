@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { IntradayPoint } from '@/api/types';
+import type { ChartRange, PricePoint } from '@/api/types';
 import {
   axisStroke,
   axisTickStyle,
@@ -18,8 +18,9 @@ import {
 } from '@/lib/chartTheme';
 import { formatMoney } from '@/lib/utils';
 
-interface TrackerIntradayChartProps {
-  data: IntradayPoint[];
+interface TrackerPriceChartProps {
+  data: PricePoint[];
+  range?: ChartRange;
   positive?: boolean;
   negative?: boolean;
 }
@@ -30,16 +31,29 @@ interface ChartPoint {
   ts: number;
 }
 
-function parsePointMs(point: IntradayPoint): number {
-  const raw = point.at ?? (point as IntradayPoint & { time?: string }).time ?? '';
+function parsePointMs(point: PricePoint): number {
+  const raw = point.at ?? (point as PricePoint & { time?: string }).time ?? '';
   const ms = new Date(raw).getTime();
   return Number.isNaN(ms) ? 0 : ms;
 }
 
-function formatAxisTime(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
+function formatAxisLabel(ms: number, range: ChartRange): string {
+  if (range === '1D') {
+    return new Date(ms).toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+  if (range === '5D') {
+    return new Date(ms).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+    });
+  }
+  return new Date(ms).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
   });
 }
 
@@ -72,12 +86,17 @@ function buildTicks(points: ChartPoint[], count = 4): number[] {
   return Array.from({ length: slots }, (_, index) => Math.round(first + step * index));
 }
 
-export function TrackerIntradayChart({ data, positive, negative }: TrackerIntradayChartProps) {
+export function TrackerPriceChart({
+  data,
+  range = '1D',
+  positive,
+  negative,
+}: TrackerPriceChartProps) {
   const chartData = useMemo<ChartPoint[]>(
     () =>
       data
         .map((point) => ({
-          at: point.at ?? (point as IntradayPoint & { time?: string }).time ?? '',
+          at: point.at ?? (point as PricePoint & { time?: string }).time ?? '',
           price: point.price,
           ts: parsePointMs(point),
         }))
@@ -90,7 +109,7 @@ export function TrackerIntradayChart({ data, positive, negative }: TrackerIntrad
   if (!chartData.length) {
     return (
       <div className="flex h-36 items-center justify-center rounded-lg bg-muted/40 text-xs text-muted-foreground">
-        No intraday data
+        No chart data
       </div>
     );
   }
@@ -110,7 +129,7 @@ export function TrackerIntradayChart({ data, positive, negative }: TrackerIntrad
             type="number"
             domain={['dataMin', 'dataMax']}
             ticks={xTicks}
-            tickFormatter={formatAxisTime}
+            tickFormatter={(ms: number) => formatAxisLabel(ms, range)}
             tick={{ ...axisTickStyle, fontSize: 11 }}
             stroke={axisStroke}
             tickMargin={8}
@@ -148,5 +167,16 @@ export function TrackerIntradayChart({ data, positive, negative }: TrackerIntrad
         </LineChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/** @deprecated Use TrackerPriceChart */
+export function TrackerIntradayChart({
+  data,
+  positive,
+  negative,
+}: Omit<TrackerPriceChartProps, 'range'>) {
+  return (
+    <TrackerPriceChart data={data} range="1D" positive={positive} negative={negative} />
   );
 }
